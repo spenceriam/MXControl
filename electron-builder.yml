@@ -1,0 +1,19 @@
+appId: com.mxcontrol.app
+productName: MX Control
+files:
+  - dist/**
+  - assets/**
+directories:
+  output: release
+linux:
+  target:
+    - AppImage
+    - deb
+    - rpm
+  category: Utility
+  maintainer: MX Control
+asar: true
+asarUnpack:
+  - assets/**
+
+

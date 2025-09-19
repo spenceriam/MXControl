@@ -11,7 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "test": "echo 'Tests are deferred per tasks.md' && exit 0",
-    "package:linux": "echo 'Packaging deferred until P-01' && exit 0"
+    "package:linux": "electron-builder --linux --config electron-builder.yml"
   },
   "dependencies": {
     "electron-store": "^8.2.0",
