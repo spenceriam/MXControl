@@ -19,10 +19,13 @@ export interface HidState {
   charging: boolean;
 }
 
+type Listener = (s: HidState) => void;
+
 export class HIDService {
   private device: HID.HID | null = null;
   private state: HidState = { connected: false, connection: 'unknown', batteryPct: 0, charging: false };
   private pollTimer: NodeJS.Timeout | null = null;
+  private listeners: Set<Listener> = new Set();
 
   discover(): HidDeviceInfo[] {
     return HID.devices()
@@ -44,6 +47,7 @@ export class HIDService {
     this.state.info = info;
     this.state.connection = 'receiver';
     this.startBatteryPolling();
+    this.emit();
   }
 
   close(): void {
@@ -58,6 +62,7 @@ export class HIDService {
       this.device = null;
     }
     this.state.connected = false;
+    this.emit();
   }
 
   private startBatteryPolling() {
@@ -66,11 +71,22 @@ export class HIDService {
       // TODO: implement HID++ battery query. For now mock steady 85%.
       this.state.batteryPct = 85;
       this.state.charging = false;
+      this.emit();
     }, 60000);
   }
 
   getState(): HidState {
     return { ...this.state };
+  }
+
+  onChange(fn: Listener) {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  }
+
+  private emit() {
+    const snapshot = this.getState();
+    for (const l of this.listeners) l(snapshot);
   }
 
   setDpi(value: number): boolean {

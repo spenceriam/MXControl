@@ -3,6 +3,8 @@ import path from 'path';
 import { registerIpcHandlers } from './ipc';
 import { createTray } from './tray';
 import { hidService } from './hid/service';
+import { setDeviceCache, getDeviceCache } from './persistence';
+import { updateTrayMenu } from './tray';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -40,14 +42,22 @@ app.whenReady().then(() => {
   registerIpcHandlers();
   createTray();
   // Attempt to discover and connect to first found device (placeholder strategy)
+  const cached = getDeviceCache();
   const devices = hidService.discover();
-  if (devices[0]) {
+  const target = devices.find((d) => (cached.lastPath && d.path === cached.lastPath) || (cached.serial && d.serialNumber === cached.serial)) || devices[0];
+  if (target) {
     try {
-      hidService.connect(devices[0]);
+      hidService.connect(target);
+      setDeviceCache({ lastPath: target.path, serial: target.serialNumber });
     } catch {
       // ignore connection failures for now
     }
   }
+
+  // react to HID state changes
+  hidService.onChange(() => {
+    updateTrayMenu();
+  });
   if (process.platform === 'darwin') {
     const template: Electron.MenuItemConstructorOptions[] = [{ role: 'appMenu' }, { role: 'editMenu' }];
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
