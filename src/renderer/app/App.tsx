@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAppStore } from '../state/store';
+import MouseTab from './MouseTab';
 
 type TabKey = 'mouse' | 'pointer' | 'scrolling' | 'profiles';
 
@@ -41,14 +42,6 @@ function DeviceCard() {
           {device?.connected ? '✓ Connected' : 'Disconnected'}
         </span>
       </div>
-    </div>
-  );
-}
-
-function MouseTab() {
-  return (
-    <div className="p-10">
-      <div className="text-neutral-400">Mouse tab placeholder (UI-02 will implement callouts)</div>
     </div>
   );
 }
