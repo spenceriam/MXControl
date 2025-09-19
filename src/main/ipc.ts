@@ -19,6 +19,7 @@ import {
   SettingsSaveResponseSchema
 } from '@shared/ipc';
 import { getSettings, listProfiles, saveProfiles, setSettings } from './persistence';
+import { disableAutostart, enableAutostart } from './autostart';
 
 // Simple in-memory mock state while HID is not wired (A-02 later)
 let mockDevice = {
@@ -83,6 +84,8 @@ export function registerIpcHandlers() {
   ipcMain.handle(Channels.SettingsSave, async (_e, payload) => {
     const req = SettingsSaveRequestSchema.parse(payload);
     setSettings(req);
+    if (req.autostart) enableAutostart();
+    else disableAutostart();
     return SettingsSaveResponseSchema.parse({ success: true });
   });
 }
