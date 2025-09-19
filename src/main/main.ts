@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeTheme } from 'electron';
+import { app, BrowserWindow, Menu, nativeTheme } from 'electron';
 import path from 'path';
+import { registerIpcHandlers } from './ipc';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -31,6 +32,7 @@ function createMainWindow() {
 
 app.whenReady().then(() => {
   createMainWindow();
+  registerIpcHandlers();
   if (process.platform === 'darwin') {
     const template: Electron.MenuItemConstructorOptions[] = [{ role: 'appMenu' }, { role: 'editMenu' }];
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
