@@ -20,6 +20,7 @@ import {
 } from '@shared/ipc';
 import { getSettings, listProfiles, saveProfiles, setSettings } from './persistence';
 import { disableAutostart, enableAutostart } from './autostart';
+import { hidService } from './hid/service';
 
 // Simple in-memory mock state while HID is not wired (A-02 later)
 let mockDevice = {
@@ -37,25 +38,35 @@ export function registerIpcHandlers() {
   });
 
   ipcMain.handle(Channels.GetDeviceStatus, async () => {
-    return DeviceStatusSchema.parse(mockDevice);
+    const s = hidService.getState();
+    const dto = {
+      name: s.info?.product ?? 'MX Master',
+      serialRedacted: (s.info?.serialNumber ?? 'XXXX-XXXX').replace(/.(?=.{4})/g, 'X'),
+      connection: s.connection,
+      battery: { percentage: s.batteryPct, charging: s.charging },
+      connected: s.connected
+    };
+    return DeviceStatusSchema.parse(dto);
   });
 
   ipcMain.handle(Channels.SetDPI, async (_e, payload) => {
     const req = SetDPIRequestSchema.parse(payload);
-    // A-02 will apply to device via HID; here we only validate
-    const res = { success: !!req };
+    const ok = hidService.setDpi(req.value);
+    const res = { success: ok };
     return SetDPIResponseSchema.parse(res);
   });
 
   ipcMain.handle(Channels.UpdateButtons, async (_e, payload) => {
     const req = UpdateButtonsRequestSchema.parse(payload);
-    const res = { success: !!req };
+    const ok = hidService.updateButtons();
+    const res = { success: ok };
     return UpdateButtonsResponseSchema.parse(res);
   });
 
   ipcMain.handle(Channels.UpdateGesture, async (_e, payload) => {
     const req = UpdateGestureRequestSchema.parse(payload);
-    const res = { success: !!req };
+    const ok = hidService.updateGesture();
+    const res = { success: ok };
     return UpdateGestureResponseSchema.parse(res);
   });
 

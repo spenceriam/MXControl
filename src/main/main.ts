@@ -2,6 +2,7 @@ import { app, BrowserWindow, Menu, nativeTheme } from 'electron';
 import path from 'path';
 import { registerIpcHandlers } from './ipc';
 import { createTray } from './tray';
+import { hidService } from './hid/service';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -38,6 +39,15 @@ app.whenReady().then(() => {
   createMainWindow();
   registerIpcHandlers();
   createTray();
+  // Attempt to discover and connect to first found device (placeholder strategy)
+  const devices = hidService.discover();
+  if (devices[0]) {
+    try {
+      hidService.connect(devices[0]);
+    } catch {
+      // ignore connection failures for now
+    }
+  }
   if (process.platform === 'darwin') {
     const template: Electron.MenuItemConstructorOptions[] = [{ role: 'appMenu' }, { role: 'editMenu' }];
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
