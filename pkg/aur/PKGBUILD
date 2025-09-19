@@ -1,0 +1,28 @@
+# Maintainer: MX Control Team
+pkgname=mx-control
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Linux-native configuration tool for Logitech MX Master mice"
+arch=('x86_64')
+url="https://github.com/your-org/mx-control"
+license=('MIT')
+depends=('electron' 'libx11' 'libxkbfile' 'libsecret')
+makedepends=('nodejs' 'npm' 'git')
+source=("${pkgname}-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "${srcdir}/${pkgname}-${pkgver}"
+  npm ci
+  npm run build
+  npm run package:linux
+}
+
+package() {
+  cd "${srcdir}/${pkgname}-${pkgver}"
+  install -dm755 "${pkgdir}/opt/${pkgname}"
+  cp -r release/linux-*/* "${pkgdir}/opt/${pkgname}/"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
+
+
