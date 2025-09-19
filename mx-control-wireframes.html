@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MX Control - Interactive Wireframes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .window {
+            width: 900px;
+            background: #0A0A0A;
+            border: 1px solid #2D2D2D;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+        }
+        
+        .titlebar {
+            background: #1A1A1A;
+            padding: 12px 16px;
+            border-bottom: 1px solid #2D2D2D;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .titlebar-title {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .titlebar-controls {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .titlebar-button {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 1px solid #2D2D2D;
+        }
+        
+        .device-card {
+            background: #1A1A1A;
+            border: 1px solid #2D2D2D;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .device-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .device-status {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 0;
+            padding: 0 20px;
+            border-bottom: 1px solid #2D2D2D;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: #999;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .tab:hover {
+            color: #fff;
+        }
+        
+        .tab.active {
+            color: #fff;
+            border-bottom-color: #fff;
+        }
+        
+        .tab-content {
+            padding: 40px;
+            min-height: 400px;
+            position: relative;
+        }
+        
+        .mouse-visual {
+            position: relative;
+            width: 400px;
+            margin: 0 auto;
+            height: 500px;
+        }
+        
+        .mouse-svg {
+            opacity: 0.1;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .button-callout {
+            position: absolute;
+            background: #1A1A1A;
+            border: 1px solid #2D2D2D;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        
+        .button-callout:hover {
+            border-color: #666;
+            background: #2D2D2D;
+        }
+        
+        .button-callout::before {
+            content: '';
+            position: absolute;
+            width: 1px;
+            background: #2D2D2D;
+        }
+        
+        .callout-scroll-click {
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .callout-back {
+            top: 180px;
+            left: 60px;
+        }
+        
+        .callout-forward {
+            top: 180px;
+            right: 60px;
+        }
+        
+        .callout-gesture {
+            top: 280px;
+            left: 80px;
+        }
+        
+        .callout-horizontal {
+            top: 380px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .dropdown-indicator {
+            margin-left: 8px;
+            opacity: 0.5;
+        }
+        
+        .pointer-content {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .slider-container {
+            margin: 30px 0;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 40px;
+            background: #1A1A1A;
+            border: 1px solid #2D2D2D;
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .slider-fill {
+            height: 100%;
+            background: #fff;
+            width: 40%;
+            border-radius: 3px;
+            position: relative;
+        }
+        
+        .slider-handle {
+            position: absolute;
+            right: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            background: #fff;
+            border: 2px solid #000;
+            border-radius: 50%;
+        }
+        
+        .preset-buttons {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .preset-button {
+            flex: 1;
+            padding: 10px;
+            background: #1A1A1A;
+            border: 1px solid #2D2D2D;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .preset-button:hover {
+            border-color: #666;
+            background: #2D2D2D;
+        }
+        
+        .preset-button.active {
+            background: #2D2D2D;
+            border-color: #fff;
+        }
+        
+        .checkbox-group {
+            margin: 30px 0;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+        
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            border: 1px solid #666;
+            border-radius: 2px;
+            position: relative;
+        }
+        
+        .checkbox.checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 12px;
+        }
+        
+        .bottom-actions {
+            padding: 20px;
+            border-top: 1px solid #2D2D2D;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .button {
+            padding: 10px 24px;
+            background: #1A1A1A;
+            border: 1px solid #2D2D2D;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .button:hover {
+            border-color: #666;
+            background: #2D2D2D;
+        }
+        
+        .button-primary {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+        }
+        
+        .button-primary:hover {
+            background: #ccc;
+            border-color: #ccc;
+        }
+        
+        .profile-list {
+            background: #1A1A1A;
+            border: 1px solid #2D2D2D;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .profile-item {
+            padding: 16px;
+            border-bottom: 1px solid #2D2D2D;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .profile-item:last-child {
+            border-bottom: none;
+        }
+        
+        .profile-name {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .profile-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .link-button {
+            color: #999;
+            text-decoration: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        
+        .link-button:hover {
+            color: #fff;
+            background: #2D2D2D;
+        }
+        
+        .section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #1A1A1A;
+            border: 1px solid #2D2D2D;
+            border-radius: 4px;
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 16px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div class="window">
+        <!-- Title Bar -->
+        <div class="titlebar">
+            <div class="titlebar-title">MX Control</div>
+            <div class="titlebar-controls">
+                <div class="titlebar-button" style="background: #666;"></div>
+                <div class="titlebar-button" style="background: #666;"></div>
+                <div class="titlebar-button" style="background: #666;"></div>
+            </div>
+        </div>
+        
+        <!-- Device Card -->
+        <div class="device-card">
+            <div class="device-info">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M12 3 C9 3 7 5 7 8 L7 16 C7 19 9 21 12 21 C15 21 17 19 17 16 L17 8 C17 5 15 3 12 3 Z"/>
+                    <path d="M12 6 L12 10"/>
+                </svg>
+                <div>
+                    <div style="font-weight: 500;">MX Master 2S</div>
+                    <div style="font-size: 12px; color: #666;">Wireless Mouse</div>
+                </div>
+            </div>
+            <div class="device-status">
+                <span>USB Receiver</span>
+                <span>🔋 85%</span>
+                <span style="color: #4f4;">✓ Connected</span>
+            </div>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('mouse')">Mouse</button>
+            <button class="tab" onclick="showTab('pointer')">Pointer</button>
+            <button class="tab" onclick="showTab('scrolling')">Scrolling</button>
+            <button class="tab" onclick="showTab('profiles')">Profiles</button>
+        </div>
+        
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Mouse Tab -->
+            <div id="mouse-tab" class="tab-panel">
+                <div class="mouse-visual">
+                    <!-- Mouse SVG Background -->
+                    <svg class="mouse-svg" viewBox="0 0 400 600" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Your provided mouse artwork would go here -->
+                        <g stroke="#fff" fill="none" stroke-width="2">
+                            <path d="M200 50 C150 50 100 100 100 150 L100 450 C100 500 150 550 200 550 C250 550 300 500 300 450 L300 150 C300 100 250 50 200 50 Z"/>
+                            <ellipse cx="200" cy="120" rx="15" ry="30"/>
+                            <path d="M150 200 L250 200"/>
+                            <rect x="140" y="250" width="40" height="60" rx="5"/>
+                        </g>
+                    </svg>
+                    
+                    <!-- Button Callouts -->
+                    <div class="button-callout callout-scroll-click">
+                        Middle Mouse Click <span class="dropdown-indicator">▼</span>
+                    </div>
+                    <div class="button-callout callout-back">
+                        Back <span class="dropdown-indicator">▼</span>
+                    </div>
+                    <div class="button-callout callout-forward">
+                        Forward <span class="dropdown-indicator">▼</span>
+                    </div>
+                    <div class="button-callout callout-gesture">
+                        Gestures <span class="dropdown-indicator">▼</span>
+                    </div>
+                    <div class="button-callout callout-horizontal">
+                        Volume Control <span class="dropdown-indicator">▼</span>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 40px;">
+                    <label class="checkbox-item" style="display: inline-flex;">
+                        <div class="checkbox"></div>
+                        <span>Swap left/right buttons</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Pointer Tab -->
+            <div id="pointer-tab" class="tab-panel" style="display: none;">
+                <div class="pointer-content">
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Pointer Speed</span>
+                            <span>1600 DPI</span>
+                        </div>
+                        <div class="slider">
+                            <div class="slider-fill">
+                                <div class="slider-handle"></div>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 12px; color: #666;">
+                            <span>Slow</span>
+                            <span>Fast</span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div style="font-size: 14px; margin-bottom: 10px; color: #999;">Quick Select</div>
+                        <div class="preset-buttons">
+                            <button class="preset-button">800</button>
+                            <button class="preset-button">1200</button>
+                            <button class="preset-button active">1600</button>
+                            <button class="preset-button">2400</button>
+                            <button class="preset-button">3200</button>
+                        </div>
+                    </div>
+                    
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <div class="checkbox"></div>
+                            <span>Enable pointer acceleration</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <div class="checkbox checked"></div>
+                            <span>Enhance pointer precision</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Scrolling Tab -->
+            <div id="scrolling-tab" class="tab-panel" style="display: none;">
+                <div class="section">
+                    <div class="section-title">Vertical Scroll</div>
+                    <div style="margin: 20px 0;">
+                        <label class="checkbox-item">
+                            <input type="radio" name="scroll-direction" checked> Standard (Traditional)
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="radio" name="scroll-direction"> Natural (Content moves with fingers)
+                        </label>
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Scroll Speed</span>
+                        </div>
+                        <div class="slider">
+                            <div class="slider-fill" style="width: 50%;">
+                                <div class="slider-handle"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <label class="checkbox-item">
+                        <div class="checkbox checked"></div>
+                        <span>Enable smooth scrolling</span>
+                    </label>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">Horizontal Scroll</div>
+                    <div style="margin: 20px 0;">
+                        <select style="width: 100%; padding: 10px; background: #0A0A0A; border: 1px solid #2D2D2D; color: #fff; border-radius: 4px;">
+                            <option>Horizontal Scroll</option>
+                            <option selected>Volume Control</option>
+                            <option>Zoom</option>
+                            <option>Tab Navigation</option>
+                            <option>Timeline Scrubbing</option>
+                            <option>Brush Size</option>
+                            <option>Page Navigation</option>
+                        </select>
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Sensitivity</span>
+                        </div>
+                        <div class="slider">
+                            <div class="slider-fill" style="width: 60%;">
+                                <div class="slider-handle"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Profiles Tab -->
+            <div id="profiles-tab" class="tab-panel" style="display: none;">
+                <div class="profile-list">
+                    <div class="profile-item">
+                        <div class="profile-name">
+                            <span>📝</span>
+                            <span>Default</span>
+                            <span style="color: #4f4; font-size: 12px;">✓ Active</span>
+                        </div>
+                        <div class="profile-actions">
+                            <a href="#" class="link-button">Edit</a>
+                            <a href="#" class="link-button">Delete</a>
+                        </div>
+                    </div>
+                    <div class="profile-item">
+                        <div class="profile-name">
+                            <span>💼</span>
+                            <span>Work</span>
+                        </div>
+                        <div class="profile-actions">
+                            <a href="#" class="link-button">Activate</a>
+                            <a href="#" class="link-button">Edit</a>
+                            <a href="#" class="link-button">Delete</a>
+                        </div>
+                    </div>
+                    <div class="profile-item">
+                        <div class="profile-name">
+                            <span>🎮</span>
+                            <span>Gaming</span>
+                        </div>
+                        <div class="profile-actions">
+                            <a href="#" class="link-button">Activate</a>
+                            <a href="#" class="link-button">Edit</a>
+                            <a href="#" class="link-button">Delete</a>
+                        </div>
+                    </div>
+                    <div class="profile-item">
+                        <div class="profile-name">
+                            <span>🎨</span>
+                            <span>Design</span>
+                        </div>
+                        <div class="profile-actions">
+                            <a href="#" class="link-button">Activate</a>
+                            <a href="#" class="link-button">Edit</a>
+                            <a href="#" class="link-button">Delete</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px; display: flex; gap: 10px;">
+                    <button class="button">+ New Profile</button>
+                    <button class="button">Import</button>
+                    <button class="button">Export</button>
+                </div>
+                
+                <div class="checkbox-group" style="margin-top: 30px;">
+                    <label class="checkbox-item">
+                        <div class="checkbox checked"></div>
+                        <span>Auto-start with system</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <div class="checkbox checked"></div>
+                        <span>Show in system tray</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bottom Actions -->
+        <div class="bottom-actions">
+            <button class="button">Restore Defaults</button>
+            <div style="display: flex; gap: 10px;">
+                <button class="button">Apply</button>
+                <button class="button button-primary">Save</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-panel').forEach(panel => {
+                panel.style.display = 'none';
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + '-tab').style.display = 'block';
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+        
+        // Add click handlers for checkboxes
+        document.querySelectorAll('.checkbox').forEach(checkbox => {
+            checkbox.parentElement.addEventListener('click', function(e) {
+                e.preventDefault();
+                checkbox.classList.toggle('checked');
+            });
+        });
+        
+        // Add click handlers for button callouts
+        document.querySelectorAll('.button-callout').forEach(callout => {
+            callout.addEventListener('click', function() {
+                alert('Dropdown menu would appear here with action options');
+            });
+        });
+    </script>
+</body>
+</html>
