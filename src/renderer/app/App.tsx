@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useAppStore } from '../state/store';
 import MouseTab from './MouseTab';
+import PointerTab from './PointerTab';
+import ScrollingTab from './ScrollingTab';
+import ProfilesTab from './ProfilesTab';
 
 type TabKey = 'mouse' | 'pointer' | 'scrolling' | 'profiles';
 
