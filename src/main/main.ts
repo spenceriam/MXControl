@@ -13,7 +13,10 @@ function createMainWindow() {
       preload: path.join(__dirname, '../preload/preload.js'),
       contextIsolation: true,
       sandbox: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      spellcheck: false
     }
   });
 
