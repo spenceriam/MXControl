@@ -2,12 +2,13 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "dist/main",
+    "rootDir": "src",
     "module": "CommonJS",
     "moduleResolution": "Node",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["src/main/**/*"]
+  "include": ["src/main/**/*", "src/shared/**/*"]
 }
 
 

@@ -14,7 +14,7 @@ function createMainWindow() {
     height: 650,
     resizable: false,
     webPreferences: {
-      preload: path.join(__dirname, '../preload/preload.js'),
+      preload: path.join(__dirname, '../../preload/preload/preload.js'),
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
@@ -25,7 +25,7 @@ function createMainWindow() {
   });
 
   const isDev = !app.isPackaged;
-  const url = isDev ? 'http://localhost:5173' : `file://${path.join(__dirname, '../renderer/index.html')}`;
+  const url = isDev ? 'http://localhost:5173' : `file://${path.join(__dirname, '../../renderer/index.html')}`;
   mainWindow.loadURL(url);
 
   mainWindow.on('closed', () => {

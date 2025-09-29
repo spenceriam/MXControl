@@ -49,30 +49,6 @@ function DeviceCard() {
   );
 }
 
-function PointerTab() {
-  return (
-    <div className="p-10">
-      <div className="text-neutral-400">Pointer tab placeholder (UI-03 will add DPI slider)</div>
-    </div>
-  );
-}
-
-function ScrollingTab() {
-  return (
-    <div className="p-10">
-      <div className="text-neutral-400">Scrolling tab placeholder (UI-03 content)</div>
-    </div>
-  );
-}
-
-function ProfilesTab() {
-  return (
-    <div className="p-10">
-      <div className="text-neutral-400">Profiles tab placeholder (UI-03 content)</div>
-    </div>
-  );
-}
-
 export default function App() {
   const [active, setActive] = useState<TabKey>('mouse');
   const setDevice = useAppStore((s) => s.setDevice);

@@ -7,7 +7,7 @@ import {
   UpdateScrollRequest,
   ProfilesSaveRequest,
   SettingsSaveRequest
-} from '@shared/ipc';
+} from '../shared/ipc';
 
 export type PingResponse = { ok: true };
 

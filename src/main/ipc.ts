@@ -17,7 +17,7 @@ import {
   SettingsGetResponseSchema,
   SettingsSaveRequestSchema,
   SettingsSaveResponseSchema
-} from '@shared/ipc';
+} from '../shared/ipc';
 import { getSettings, listProfiles, saveProfiles, setSettings } from './persistence';
 import { disableAutostart, enableAutostart } from './autostart';
 import { hidService } from './hid/service';

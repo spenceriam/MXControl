@@ -1,5 +1,5 @@
 import Store from 'electron-store';
-import { ProfileSchema, SettingsSchema, type ProfileDto, type SettingsDto } from '@shared/schemas';
+import { ProfileSchema, SettingsSchema, type ProfileDto, type SettingsDto } from '../shared/schemas';
 import { logInfo } from './log';
 
 type ProfilesStore = { profiles: ProfileDto[] };
