@@ -320,4 +320,41 @@ Resolved decisions
 - Do not start the development server (`npm run dev`) until all tasks in `tasks.md` are complete.
 - Defer tasks related to CI/CD, tests, or testing in general until instructed otherwise.
 
+### Progress Log
+
+#### 2025-09-29: Environment Setup and HID++ Implementation Gap Analysis
+
+Completed environment setup for MX Master 2S development on Zorin OS:
+
+1. Dependencies installed
+   - Ran `npm install` to install all Node.js dependencies
+   - Verified node-hid compiled and available
+   - Created .gitignore for node_modules and build artifacts
+
+2. System permissions configured
+   - Added user to `input` group for hidraw device access
+   - Created udev rule `/etc/udev/rules.d/99-mx-control.rules` for MX Master 2S
+   - Rule handles both USB/receiver and Bluetooth connections
+   - Verified hidraw4 permissions: crw-rw---- root:input
+
+3. Device detection verified
+   - Created `scripts/test-detect.cjs` for device enumeration
+   - Confirmed MX Master 2S detected via Bluetooth (vendorId: 0x046d, productId: 0xb019)
+   - Device exposes 4 HID interfaces including HID++ interface (Usage Page 0xff43)
+   - Documented results in `docs/detection.md`
+
+4. HID++ implementation gap documented
+   - Created `docs/HIDPP_TODO.md` outlining all missing protocol work
+   - Critical gap: A-02 (HID service) is scaffolded but not functional
+   - All device communication is stubbed (battery, DPI, buttons, gestures)
+   - Documented required features: Root (0x0000), Battery (0x1000), DPI (0x2201), Buttons (0x1b04), Gestures (0x6501)
+   - Provided implementation strategy and reference resources
+
+Next steps:
+- Study libratbag and Solaar HID++ implementations
+- Implement HID++ 2.0 protocol packet handling
+- Begin with Root feature and feature discovery
+- Progressively implement battery, DPI, button remapping, and gesture configuration
+
+Note: User must log out and back in for `input` group membership to take effect before device access will work.
 
