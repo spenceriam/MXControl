@@ -25,7 +25,7 @@ export const GestureConfigSchema = z.object({
   mode: z.enum(['single', 'gestures']),
   sensitivity: z.number().int().min(1).max(10),
   singleAction: ButtonSimpleActionSchema.optional(),
-  actions: z.record(GestureDirectionSchema, ButtonSimpleActionSchema).partial().optional()
+  actions: z.record(z.string(), ButtonSimpleActionSchema).optional()
 });
 
 export const HorizontalFunctionSchema = z.enum([

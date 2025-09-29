@@ -2,9 +2,12 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "dist/preload",
-    "module": "CommonJS"
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
   },
-  "include": ["src/preload/**/*"]
+  "include": ["src/preload/**/*", "src/shared/**/*"]
 }
 
 
