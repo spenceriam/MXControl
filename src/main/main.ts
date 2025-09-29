@@ -37,7 +37,7 @@ function createMainWindow() {
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createMainWindow();
   registerIpcHandlers();
   createTray();
@@ -47,11 +47,15 @@ app.whenReady().then(() => {
   const target = devices.find((d) => (cached.lastPath && d.path === cached.lastPath) || (cached.serial && d.serialNumber === cached.serial)) || devices[0];
   if (target) {
     try {
-      hidService.connect(target);
+      await hidService.connect(target);
       setDeviceCache({ lastPath: target.path, serial: target.serialNumber });
-    } catch {
+      console.log('Connected to device:', target.product);
+    } catch (err) {
+      console.error('Failed to connect to device:', err);
       // ignore connection failures for now
     }
+  } else {
+    console.log('No MX Master devices found');
   }
 
   // react to HID state changes
@@ -75,9 +79,5 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
 });
 
-// Placeholder typed IPC channel (A-01 will formalize)
-ipcMain.handle('mxc/v1/ping', async () => {
-  return { ok: true } as const;
-});
 
 
