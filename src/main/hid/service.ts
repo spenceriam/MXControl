@@ -48,6 +48,7 @@ export class HIDService {
     try {
       // Enumerate all HID devices
       const allDevices = HID.devices();
+      console.log(`[HID Discovery] Total devices enumerated: ${allDevices.length}`);
 
       // Candidate filters:
       // - Logitech vendor (0x046d)
@@ -60,9 +61,14 @@ export class HIDService {
         const isMxName = name.includes('mx master') || name.includes('master 2s');
         return isLogitech || isHidpp || isMxName;
       });
+      console.log(`[HID Discovery] Candidates after filtering: ${candidates.length}`);
+      candidates.forEach((d, i) => {
+        console.log(`  [${i}] ${d.product} | path=${d.path} | vendor=0x${(d.vendorId ?? 0).toString(16)} | product=0x${(d.productId ?? 0).toString(16)} | usagePage=0x${((d.usagePage as any) ?? 0).toString(16)}`);
+      });
 
       // Prefer HID++ interface if available
       const hidppDevices = candidates.filter((d) => (d.usagePage as any) === 0xff43);
+      console.log(`[HID Discovery] HID++ devices (usagePage 0xff43): ${hidppDevices.length}`);
       const preferred = hidppDevices.length > 0 ? hidppDevices : candidates;
 
       // Dedupe by path (Bluetooth often reports multiple logical interfaces with same hidraw)
@@ -71,9 +77,10 @@ export class HIDService {
         if (d.path) byPath.set(d.path, d);
       }
       const unique = Array.from(byPath.values());
+      console.log(`[HID Discovery] Unique devices after dedup: ${unique.length}`);
 
       // Map to API shape
-      return unique.map((d) => ({
+      const result = unique.map((d) => ({
         path: d.path!,
         vendorId: d.vendorId ?? 0,
         productId: d.productId ?? 0,
@@ -81,6 +88,9 @@ export class HIDService {
         manufacturer: d.manufacturer,
         product: d.product
       }));
+      
+      console.log(`[HID Discovery] Returning ${result.length} device(s) to renderer`);
+      return result;
     } catch (err) {
       console.error('Device discovery failed:', err);
       return []; // Return empty array instead of crashing
@@ -108,7 +118,10 @@ export class HIDService {
   
   private async _connectInternal(info: HidDeviceInfo): Promise<void> {
     try {
+      console.log(`[HID Connect] Opening device: ${info.path}`);
+      console.log(`[HID Connect] Product: ${info.product}, Serial: ${info.serialNumber}`);
       this.device = new HID.HID(info.path);
+      console.log(`[HID Connect] Device opened successfully`);
       
       // Detect connection type based on strong heuristics (Linux Bluetooth often uses hidraw with MAC serial)
       const serialLooksLikeMac = !!info.serialNumber && /([0-9a-f]{2}:){5}[0-9a-f]{2}/i.test(info.serialNumber);
@@ -116,26 +129,37 @@ export class HIDService {
       const productHintsBt = /bluetooth/i.test(info.product ?? '');
       const isBluetooth = serialLooksLikeMac || pathHintsBt || productHintsBt;
       this.state.connection = isBluetooth ? 'bluetooth' : 'receiver';
+      console.log(`[HID Connect] Connection type: ${this.state.connection} (BT=${isBluetooth}, serialMAC=${serialLooksLikeMac}, pathBT=${pathHintsBt})`);
       
       // Initialize HID++ protocol (Bluetooth uses device index 0xff)
       this.hidpp = new HIDPPProtocol(this.device, isBluetooth);
+      console.log(`[HID Connect] HID++ protocol initialized`);
       
       // Verify device responds by fetching protocol version (robust across transports)
-      await this.hidpp.getProtocolVersion();
+      console.log(`[HID Connect] Verifying connection with getProtocolVersion...`);
+      const version = await this.hidpp.getProtocolVersion();
+      console.log(`[HID Connect] Protocol version: ${version.major}.${version.minor}`);
       
       // Discover features for caching
-      await this.hidpp.discoverFeatures();
+      console.log(`[HID Connect] Discovering features...`);
+      const features = await this.hidpp.discoverFeatures();
+      console.log(`[HID Connect] Discovered ${features.length} features`);
       
       this.state.connected = true;
       this.state.info = info;
       
       // Get initial battery status
+      console.log(`[HID Connect] Getting battery status...`);
       await this.updateBatteryStatus();
       
       this.startBatteryPolling();
       this.emit();
+      console.log(`[HID Connect] Connection complete and successful`);
     } catch (err) {
-      console.error('Internal connection error:', err);
+      console.error('[HID Connect] Internal connection error:', err);
+      if (err instanceof Error) {
+        console.error('[HID Connect] Error stack:', err.stack);
+      }
       throw err;
     }
   }
