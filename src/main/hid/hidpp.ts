@@ -57,6 +57,7 @@ export class HIDPPProtocol {
   private softwareId: number = 0x01;
   private featureCache: Map<number, number> = new Map();
   private pendingResponses: Map<string, (data: Buffer) => void> = new Map();
+  private closed: boolean = false;
 
   constructor(device: HID.HID, isBluetooth: boolean = true) {
     this.device = device;
@@ -66,6 +67,13 @@ export class HIDPPProtocol {
     this.device.on('data', (data: Buffer) => {
       this.handleResponse(data);
     });
+  }
+  
+  // Ensure device is valid before operations
+  private ensureDevice(): void {
+    if (this.closed || !this.device) {
+      throw new HIDPPError('Device not connected or already closed', -1);
+    }
   }
 
   private handleResponse(data: Buffer): void {
@@ -97,6 +105,9 @@ export class HIDPPProtocol {
     params: Buffer = Buffer.alloc(0),
     longFormat: boolean = false
   ): Promise<Buffer> {
+    // Validate device is available
+    this.ensureDevice();
+    
     const reportId = longFormat ? REPORT_ID_LONG : REPORT_ID_SHORT;
     const reportSize = longFormat ? 20 : 7;
     
@@ -425,6 +436,7 @@ export class HIDPPProtocol {
   }
 
   close(): void {
+    this.closed = true;
     this.pendingResponses.clear();
     this.featureCache.clear();
   }

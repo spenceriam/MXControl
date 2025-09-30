@@ -41,27 +41,22 @@ app.whenReady().then(async () => {
   createMainWindow();
   registerIpcHandlers();
   createTray();
-  // Attempt to discover and connect to first found device (placeholder strategy)
-  const cached = getDeviceCache();
-  const devices = hidService.discover();
-  const target = devices.find((d) => (cached.lastPath && d.path === cached.lastPath) || (cached.serial && d.serialNumber === cached.serial)) || devices[0];
-  if (target) {
-    try {
-      await hidService.connect(target);
-      setDeviceCache({ lastPath: target.path, serial: target.serialNumber });
-      console.log('Connected to device:', target.product);
-    } catch (err) {
-      console.error('Failed to connect to device:', err);
-      // ignore connection failures for now
-    }
-  } else {
-    console.log('No MX Master devices found');
+  
+  // Initialize HID service without connecting (prevents startup crashes)
+  // Connection will be initiated by user action or IPC handler
+  try {
+    hidService.initialize();
+    console.log('HID service initialized (not connected)');
+  } catch (err) {
+    console.error('HID service initialization failed:', err);
+    // App continues without HID support
   }
 
-  // react to HID state changes
+  // React to HID state changes for UI updates
   hidService.onChange(() => {
     updateTrayMenu();
   });
+  
   if (process.platform === 'darwin') {
     const template: Electron.MenuItemConstructorOptions[] = [{ role: 'appMenu' }, { role: 'editMenu' }];
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));

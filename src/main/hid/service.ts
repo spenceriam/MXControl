@@ -28,34 +28,71 @@ export class HIDService {
   private state: HidState = { connected: false, connection: 'unknown', batteryPct: 0, charging: false };
   private pollTimer: NodeJS.Timeout | null = null;
   private listeners: Set<Listener> = new Set();
+  private initialized: boolean = false;
 
+  // Safe initialization without device enumeration
+  initialize(): void {
+    if (this.initialized) return;
+    
+    this.state = {
+      connected: false,
+      connection: 'unknown',
+      batteryPct: 0,
+      charging: false
+    };
+    
+    this.initialized = true;
+    console.log('HIDService initialized safely');
+  }
   discover(): HidDeviceInfo[] {
-    // Find Logitech MX devices, prioritizing HID++ interface (usagePage 0xff43)
-    const allDevices = HID.devices();
-    const mxDevices = allDevices.filter(
-      (d) =>
-        d.vendorId === 0x046d &&
-        (d.productId === 0xb019 || // MX Master 2S
-          (d.product ?? '').toLowerCase().includes('mx master'))
-    );
+    try {
+      // Find Logitech MX devices, prioritizing HID++ interface (usagePage 0xff43)
+      const allDevices = HID.devices();
+      const mxDevices = allDevices.filter(
+        (d) =>
+          d.vendorId === 0x046d &&
+          (d.productId === 0xb019 || // MX Master 2S
+            (d.product ?? '').toLowerCase().includes('mx master'))
+      );
 
-    // Prefer HID++ interface if available
-    const hidppDevices = mxDevices.filter((d) => d.usagePage === 0xff43);
-    const devicesToUse = hidppDevices.length > 0 ? hidppDevices : mxDevices;
+      // Prefer HID++ interface if available
+      const hidppDevices = mxDevices.filter((d) => d.usagePage === 0xff43);
+      const devicesToUse = hidppDevices.length > 0 ? hidppDevices : mxDevices;
 
-    return devicesToUse.map((d) => ({
-      path: d.path!,
-      vendorId: d.vendorId!,
-      productId: d.productId!,
-      serialNumber: d.serialNumber,
-      manufacturer: d.manufacturer,
-      product: d.product
-    }));
+      return devicesToUse.map((d) => ({
+        path: d.path!,
+        vendorId: d.vendorId!,
+        productId: d.productId!,
+        serialNumber: d.serialNumber,
+        manufacturer: d.manufacturer,
+        product: d.product
+      }));
+    } catch (err) {
+      console.error('Device discovery failed:', err);
+      return []; // Return empty array instead of crashing
+    }
   }
 
   async connect(info: HidDeviceInfo): Promise<void> {
     this.close();
     
+    // Create timeout promise
+    const timeoutMs = 5000;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`Connection timeout after ${timeoutMs}ms`)), timeoutMs);
+    });
+    
+    try {
+      // Race connection against timeout
+      await Promise.race([this._connectInternal(info), timeoutPromise]);
+    } catch (err) {
+      console.error('Failed to connect to device:', err);
+      this.close(); // Ensure cleanup
+      throw err; // Re-throw for caller to handle
+    }
+  }
+  
+  private async _connectInternal(info: HidDeviceInfo): Promise<void> {
     try {
       this.device = new HID.HID(info.path);
       
@@ -66,7 +103,7 @@ export class HIDService {
       // Initialize HID++ protocol
       this.hidpp = new HIDPPProtocol(this.device, isBluetooth);
       
-      // Test connection with ping
+      // Test connection with ping (with internal timeout)
       const pingOk = await this.hidpp.ping();
       if (!pingOk) {
         throw new Error('Device did not respond to ping');
@@ -84,8 +121,7 @@ export class HIDService {
       this.startBatteryPolling();
       this.emit();
     } catch (err) {
-      console.error('Failed to connect to device:', err);
-      this.close();
+      console.error('Internal connection error:', err);
       throw err;
     }
   }
