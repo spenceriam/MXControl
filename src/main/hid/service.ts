@@ -110,11 +110,14 @@ export class HIDService {
     try {
       this.device = new HID.HID(info.path);
       
-      // Detect connection type based on path/interface
-      const isBluetooth = info.path.includes('uhid') || info.path.includes('bluetooth');
+      // Detect connection type based on strong heuristics (Linux Bluetooth often uses hidraw with MAC serial)
+      const serialLooksLikeMac = !!info.serialNumber && /([0-9a-f]{2}:){5}[0-9a-f]{2}/i.test(info.serialNumber);
+      const pathHintsBt = /uhid|bluetooth/i.test(info.path);
+      const productHintsBt = /bluetooth/i.test(info.product ?? '');
+      const isBluetooth = serialLooksLikeMac || pathHintsBt || productHintsBt;
       this.state.connection = isBluetooth ? 'bluetooth' : 'receiver';
       
-      // Initialize HID++ protocol
+      // Initialize HID++ protocol (Bluetooth uses device index 0xff)
       this.hidpp = new HIDPPProtocol(this.device, isBluetooth);
       
       // Test connection with ping (with internal timeout)
