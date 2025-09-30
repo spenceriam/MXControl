@@ -22,8 +22,7 @@ import {
   SettingsSaveRequestSchema,
   SettingsSaveResponseSchema,
   WindowResizeRequestSchema,
-  WindowResizeResponseSchema,
-  Channels
+  WindowResizeResponseSchema
 } from '../shared/ipc';
 import { getSettings, listProfiles, saveProfiles, setSettings } from './persistence';
 import { disableAutostart, enableAutostart } from './autostart';
