@@ -2,6 +2,10 @@ import { ipcMain } from 'electron';
 import {
   Channels,
   DeviceStatusSchema,
+  DeviceDiscoverResponseSchema,
+  DeviceConnectRequestSchema,
+  DeviceConnectResponseSchema,
+  DeviceDisconnectResponseSchema,
   PingResponseSchema,
   SetDPIRequestSchema,
   SetDPIResponseSchema,
@@ -38,6 +42,39 @@ export function registerIpcHandlers() {
       connected: s.connected
     };
     return DeviceStatusSchema.parse(dto);
+  });
+
+  ipcMain.handle(Channels.DeviceDiscover, async () => {
+    const devices = hidService.discover();
+    const dto = { devices };
+    return DeviceDiscoverResponseSchema.parse(dto);
+  });
+
+  ipcMain.handle(Channels.DeviceConnect, async (_e, payload) => {
+    const req = DeviceConnectRequestSchema.parse(payload);
+    try {
+      // Find the device info by path
+      const devices = hidService.discover();
+      const device = devices.find(d => d.path === req.path);
+      
+      if (!device) {
+        return DeviceConnectResponseSchema.parse({
+          success: false,
+          error: 'Device not found'
+        });
+      }
+      
+      await hidService.connect(device);
+      return DeviceConnectResponseSchema.parse({ success: true });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : 'Unknown error';
+      return DeviceConnectResponseSchema.parse({ success: false, error });
+    }
+  });
+
+  ipcMain.handle(Channels.DeviceDisconnect, async () => {
+    hidService.close();
+    return DeviceDisconnectResponseSchema.parse({ success: true });
   });
 
   ipcMain.handle(Channels.SetDPI, async (_e, payload) => {

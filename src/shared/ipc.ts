@@ -5,6 +5,9 @@ import { ButtonsMappingSchema, DPISettingsSchema, ScrollingSettingsSchema, Gestu
 export const Channels = {
   Ping: 'mxc/v1/ping' as const,
   GetDeviceStatus: 'mxc/v1/device/get-status' as const,
+  DeviceDiscover: 'mxc/v1/device/discover' as const,
+  DeviceConnect: 'mxc/v1/device/connect' as const,
+  DeviceDisconnect: 'mxc/v1/device/disconnect' as const,
   SetDPI: 'mxc/v1/pointer/set-dpi' as const,
   UpdateButtons: 'mxc/v1/mouse/update-buttons' as const,
   UpdateGesture: 'mxc/v1/mouse/update-gesture' as const,
@@ -26,6 +29,38 @@ export const DeviceStatusSchema = z.object({
   connected: z.boolean()
 });
 export type DeviceStatusDto = z.infer<typeof DeviceStatusSchema>;
+
+// Device discovery and connection
+export const DeviceInfoSchema = z.object({
+  path: z.string(),
+  vendorId: z.number(),
+  productId: z.number(),
+  serialNumber: z.string().optional(),
+  manufacturer: z.string().optional(),
+  product: z.string().optional()
+});
+export type DeviceInfoDto = z.infer<typeof DeviceInfoSchema>;
+
+export const DeviceDiscoverResponseSchema = z.object({
+  devices: z.array(DeviceInfoSchema)
+});
+export type DeviceDiscoverResponse = z.infer<typeof DeviceDiscoverResponseSchema>;
+
+export const DeviceConnectRequestSchema = z.object({
+  path: z.string()
+});
+export type DeviceConnectRequest = z.infer<typeof DeviceConnectRequestSchema>;
+
+export const DeviceConnectResponseSchema = z.object({
+  success: z.boolean(),
+  error: z.string().optional()
+});
+export type DeviceConnectResponse = z.infer<typeof DeviceConnectResponseSchema>;
+
+export const DeviceDisconnectResponseSchema = z.object({
+  success: z.boolean()
+});
+export type DeviceDisconnectResponse = z.infer<typeof DeviceDisconnectResponseSchema>;
 
 export const SetDPIRequestSchema = z.object({ value: z.number().int().min(200).max(4000).refine(v => v % 50 === 0, 'DPI must be multiple of 50') });
 export type SetDPIRequest = z.infer<typeof SetDPIRequestSchema>;

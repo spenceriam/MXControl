@@ -29,22 +29,93 @@ function Tabs({ active, onChange }: { active: TabKey; onChange: (t: TabKey) => v
 
 function DeviceCard() {
   const device = useAppStore((s) => s.device);
+  const connectionStatus = useAppStore((s) => s.connectionStatus);
+  const connectionError = useAppStore((s) => s.connectionError);
+  const setDevice = useAppStore((s) => s.setDevice);
+  const setConnectionStatus = useAppStore((s) => s.setConnectionStatus);
+  
+  const handleConnect = async () => {
+    setConnectionStatus('connecting');
+    setConnectionError(null);
+    
+    try {
+      // Discover devices
+      const result = await window.mxc.discoverDevices();
+      
+      if (result.devices.length === 0) {
+        setConnectionStatus('error', 'No MX Master devices found');
+        return;
+      }
+      
+      // Connect to first device
+      const connectResult = await window.mxc.connectDevice({ path: result.devices[0].path });
+      
+      if (!connectResult.success) {
+        setConnectionStatus('error', connectResult.error || 'Connection failed');
+        return;
+      }
+      
+      // Get updated device status
+      const status = await window.mxc.getDeviceStatus();
+      setDevice(status);
+      setConnectionStatus('connected');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setConnectionStatus('error', message);
+    }
+  };
+  
+  const handleDisconnect = async () => {
+    try {
+      await window.mxc.disconnectDevice();
+      const status = await window.mxc.getDeviceStatus();
+      setDevice(status);
+      setConnectionStatus('idle');
+    } catch (err) {
+      console.error('Disconnect failed:', err);
+    }
+  };
+  
   return (
-    <div className="mx-5 mt-5 rounded-md border border-neutral-700 bg-neutral-900 p-4 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="w-6 h-6 border border-neutral-600 rounded" />
-        <div>
-          <div className="text-sm font-medium">{device?.name ?? 'No device detected'}</div>
-          <div className="text-xs text-neutral-500">Wireless Mouse</div>
+    <div className="mx-5 mt-5 rounded-md border border-neutral-700 bg-neutral-900 p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 border border-neutral-600 rounded" />
+          <div>
+            <div className="text-sm font-medium">{device?.name ?? 'No device detected'}</div>
+            <div className="text-xs text-neutral-500">Wireless Mouse</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 text-xs text-neutral-400">
+            <span>{device?.connection ?? 'unknown'}</span>
+            <span>{device ? `🔋 ${device.battery.percentage}%` : '—'}</span>
+            <span className={device?.connected ? 'text-green-400' : 'text-neutral-500'}>
+              {device?.connected ? '✓ Connected' : 'Disconnected'}
+            </span>
+          </div>
+          {!device?.connected && (
+            <button
+              onClick={handleConnect}
+              disabled={connectionStatus === 'connecting'}
+              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white text-xs rounded transition-colors"
+            >
+              {connectionStatus === 'connecting' ? 'Connecting...' : 'Connect Device'}
+            </button>
+          )}
+          {device?.connected && (
+            <button
+              onClick={handleDisconnect}
+              className="px-4 py-1.5 border border-neutral-600 hover:border-neutral-500 text-neutral-300 text-xs rounded transition-colors"
+            >
+              Disconnect
+            </button>
+          )}
         </div>
       </div>
-      <div className="flex items-center gap-4 text-xs text-neutral-400">
-        <span>{device?.connection ?? 'unknown'}</span>
-        <span>{device ? `🔋 ${device.battery.percentage}%` : '—'}</span>
-        <span className={device?.connected ? 'text-green-400' : 'text-neutral-500'}>
-          {device?.connected ? '✓ Connected' : 'Disconnected'}
-        </span>
-      </div>
+      {connectionError && (
+        <div className="mt-2 text-xs text-red-400">Error: {connectionError}</div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,9 @@ import type { DeviceStatus, DPISettings, ButtonsMapping, ScrollingSettings, Prof
 export interface DeviceSlice {
   device: DeviceStatus | null;
   setDevice: (device: DeviceStatus | null) => void;
+  connectionStatus: 'idle' | 'connecting' | 'connected' | 'error';
+  connectionError: string | null;
+  setConnectionStatus: (status: 'idle' | 'connecting' | 'connected' | 'error', error?: string) => void;
 }
 
 export interface PointerSlice {
@@ -45,6 +48,9 @@ const defaultScrolling: ScrollingSettings = {
 export const useAppStore = create<AppState>((set) => ({
   device: null,
   setDevice: (device) => set({ device }),
+  connectionStatus: 'idle',
+  connectionError: null,
+  setConnectionStatus: (status, error) => set({ connectionStatus: status, connectionError: error ?? null }),
 
   dpi: defaultDpi,
   setDpi: (dpi) => set({ dpi }),

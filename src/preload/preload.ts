@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import {
   Channels,
+  DeviceConnectRequest,
   SetDPIRequest,
   UpdateButtonsRequest,
   UpdateGestureRequest,
@@ -14,6 +15,9 @@ export type PingResponse = { ok: true };
 const api = {
   ping: async (): Promise<PingResponse> => ipcRenderer.invoke(Channels.Ping),
   getDeviceStatus: async () => ipcRenderer.invoke(Channels.GetDeviceStatus),
+  discoverDevices: async () => ipcRenderer.invoke(Channels.DeviceDiscover),
+  connectDevice: async (req: DeviceConnectRequest) => ipcRenderer.invoke(Channels.DeviceConnect, req),
+  disconnectDevice: async () => ipcRenderer.invoke(Channels.DeviceDisconnect),
   setDpi: async (req: SetDPIRequest) => ipcRenderer.invoke(Channels.SetDPI, req),
   updateButtons: async (req: UpdateButtonsRequest) => ipcRenderer.invoke(Channels.UpdateButtons, req),
   updateGesture: async (req: UpdateGestureRequest) => ipcRenderer.invoke(Channels.UpdateGesture, req),
