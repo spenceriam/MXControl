@@ -1,6 +1,7 @@
-import { app, Menu, Tray, nativeImage } from 'electron';
+import { app, Menu, Tray, nativeImage, BrowserWindow } from 'electron';
 import path from 'path';
 import { listProfiles, saveProfiles, getSettings, setSettings } from './persistence';
+import { hidService } from './hid/service';
 
 let tray: Tray | null = null;
 
@@ -17,9 +18,20 @@ export function updateTrayMenu() {
   if (!tray) return;
   const profiles = listProfiles();
   const settings = getSettings();
+  const deviceState = hidService.getState();
   const items: Electron.MenuItemConstructorOptions[] = [];
 
-  items.push({ label: 'MX Control', enabled: false });
+  // Device status
+  if (deviceState.connected) {
+    const batteryIcon = deviceState.charging ? '⚡' : '🔋';
+    const deviceName = deviceState.info?.product || 'MX Master';
+    items.push({ label: `${deviceName}`, enabled: false });
+    items.push({ label: `${batteryIcon} Battery: ${deviceState.batteryPct}%`, enabled: false });
+    items.push({ label: `Connection: ${deviceState.connection}`, enabled: false });
+  } else {
+    items.push({ label: 'No device connected', enabled: false });
+  }
+  
   items.push({ type: 'separator' });
 
   // Profiles submenu
@@ -40,9 +52,25 @@ export function updateTrayMenu() {
   });
 
   items.push({ type: 'separator' });
-  items.push({ label: 'Show Window', click: () => app.focus({ steal: true }) });
+  items.push({ 
+    label: 'Show Window', 
+    click: () => {
+      const windows = BrowserWindow.getAllWindows();
+      if (windows.length > 0) {
+        windows[0].show();
+        windows[0].focus();
+      }
+    } 
+  });
   items.push({ label: 'Quit', role: 'quit' });
   tray.setContextMenu(Menu.buildFromTemplate(items));
+  
+  // Update tooltip
+  if (deviceState.connected) {
+    tray.setToolTip(`MX Control - Battery: ${deviceState.batteryPct}%`);
+  } else {
+    tray.setToolTip('MX Control - No device');
+  }
 }
 
 
