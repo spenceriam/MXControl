@@ -36,8 +36,7 @@ function DeviceCard() {
   
   const handleConnect = async () => {
     console.log('[Renderer] Connect button clicked');
-    setConnectionStatus('connecting');
-    setConnectionError(null);
+    setConnectionStatus('connecting', undefined);
     
     try {
       // Discover devices
