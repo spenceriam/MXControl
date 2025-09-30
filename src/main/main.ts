@@ -29,6 +29,11 @@ function createMainWindow() {
   const url = isDev ? 'http://localhost:5173' : `file://${path.join(__dirname, '../../renderer/index.html')}`;
   mainWindow.loadURL(url);
 
+  // Open DevTools in development mode
+  if (isDev) {
+    mainWindow.webContents.openDevTools();
+  }
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
