@@ -35,32 +35,43 @@ function DeviceCard() {
   const setConnectionStatus = useAppStore((s) => s.setConnectionStatus);
   
   const handleConnect = async () => {
+    console.log('[Renderer] Connect button clicked');
     setConnectionStatus('connecting');
     setConnectionError(null);
     
     try {
       // Discover devices
+      console.log('[Renderer] Calling discoverDevices...');
       const result = await window.mxc.discoverDevices();
+      console.log('[Renderer] Discovery result:', result);
       
       if (result.devices.length === 0) {
+        console.log('[Renderer] No devices found');
         setConnectionStatus('error', 'No MX Master devices found');
         return;
       }
       
       // Connect to first device
+      console.log('[Renderer] Connecting to device:', result.devices[0]);
       const connectResult = await window.mxc.connectDevice({ path: result.devices[0].path });
+      console.log('[Renderer] Connect result:', connectResult);
       
       if (!connectResult.success) {
+        console.log('[Renderer] Connection failed:', connectResult.error);
         setConnectionStatus('error', connectResult.error || 'Connection failed');
         return;
       }
       
       // Get updated device status
+      console.log('[Renderer] Getting device status...');
       const status = await window.mxc.getDeviceStatus();
+      console.log('[Renderer] Device status:', status);
       setDevice(status);
       setConnectionStatus('connected');
+      console.log('[Renderer] Connection complete');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
+      console.error('[Renderer] Error in handleConnect:', err);
       setConnectionStatus('error', message);
     }
   };
