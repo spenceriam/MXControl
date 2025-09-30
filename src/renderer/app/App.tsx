@@ -28,6 +28,7 @@ function Tabs({ active, onChange }: { active: TabKey; onChange: (t: TabKey) => v
 }
 
 function DeviceCard() {
+  // v2: Fixed setConnectionError bug
   const device = useAppStore((s) => s.device);
   const connectionStatus = useAppStore((s) => s.connectionStatus);
   const connectionError = useAppStore((s) => s.connectionError);
