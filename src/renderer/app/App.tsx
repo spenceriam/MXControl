@@ -137,7 +137,7 @@ export default function App() {
       <div className="bg-neutral-900 border-b border-neutral-700 px-4 py-3 text-sm font-medium">MX Control</div>
       <DeviceCard />
       <Tabs active={active} onChange={setActive} />
-      <div className="flex-1">
+      <div className="flex-1 overflow-auto">
         {active === 'mouse' && <MouseTab />}
         {active === 'pointer' && <PointerTab />}
         {active === 'scrolling' && <ScrollingTab />}
