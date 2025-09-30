@@ -132,12 +132,33 @@ export default function App() {
       .catch(() => void 0);
   }, [setDevice]);
 
+  // Resize the window to fit content (no scrollbars)
+  useEffect(() => {
+    const WIDTH = 900;
+    const resize = () => {
+      const height = document.documentElement.scrollHeight;
+      window.mxc?.resizeWindow?.({ width: WIDTH, height });
+    };
+    const id = requestAnimationFrame(resize);
+    return () => cancelAnimationFrame(id);
+  }, [active]);
+
+  useEffect(() => {
+    const WIDTH = 900;
+    const resize = () => {
+      const height = document.documentElement.scrollHeight;
+      window.mxc?.resizeWindow?.({ width: WIDTH, height });
+    };
+    const id = requestAnimationFrame(resize);
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   return (
-    <div className="w-screen h-screen bg-black text-white flex flex-col overflow-hidden">
+    <div className="w-[900px] bg-black text-white flex flex-col overflow-hidden">
       <div className="bg-neutral-900 border-b border-neutral-700 px-4 py-3 text-sm font-medium">MX Control</div>
       <DeviceCard />
       <Tabs active={active} onChange={setActive} />
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+      <div className="flex-1">
         {active === 'mouse' && <MouseTab />}
         {active === 'pointer' && <PointerTab />}
         {active === 'scrolling' && <ScrollingTab />}

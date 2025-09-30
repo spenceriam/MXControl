@@ -7,7 +7,8 @@ import {
   UpdateGestureRequest,
   UpdateScrollRequest,
   ProfilesSaveRequest,
-  SettingsSaveRequest
+  SettingsSaveRequest,
+  WindowResizeRequest
 } from '../shared/ipc';
 
 export type PingResponse = { ok: true };
@@ -25,7 +26,8 @@ const api = {
   listProfiles: async () => ipcRenderer.invoke(Channels.ProfilesList),
   saveProfiles: async (req: ProfilesSaveRequest) => ipcRenderer.invoke(Channels.ProfilesSave, req),
   getSettings: async () => ipcRenderer.invoke(Channels.SettingsGet),
-  saveSettings: async (req: SettingsSaveRequest) => ipcRenderer.invoke(Channels.SettingsSave, req)
+  saveSettings: async (req: SettingsSaveRequest) => ipcRenderer.invoke(Channels.SettingsSave, req),
+  resizeWindow: async (req: WindowResizeRequest) => ipcRenderer.invoke(Channels.WindowResize, req)
 };
 
 contextBridge.exposeInMainWorld('mxc', api);

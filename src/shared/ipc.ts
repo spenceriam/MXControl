@@ -15,7 +15,8 @@ export const Channels = {
   ProfilesList: 'mxc/v1/profiles/list' as const,
   ProfilesSave: 'mxc/v1/profiles/save' as const,
   SettingsGet: 'mxc/v1/settings/get' as const,
-  SettingsSave: 'mxc/v1/settings/save' as const
+  SettingsSave: 'mxc/v1/settings/save' as const,
+  WindowResize: 'mxc/v1/window/resize' as const
 };
 
 export const PingResponseSchema = z.object({ ok: z.literal(true) });
@@ -95,5 +96,14 @@ export const SettingsSaveRequestSchema = SettingsSchema;
 export type SettingsSaveRequest = z.infer<typeof SettingsSaveRequestSchema>;
 export const SettingsSaveResponseSchema = z.object({ success: z.boolean() });
 export type SettingsSaveResponse = z.infer<typeof SettingsSaveResponseSchema>;
+
+// Window
+export const WindowResizeRequestSchema = z.object({
+  width: z.number().int().min(300).max(3000),
+  height: z.number().int().min(200).max(3000)
+});
+export type WindowResizeRequest = z.infer<typeof WindowResizeRequestSchema>;
+export const WindowResizeResponseSchema = z.object({ success: z.boolean() });
+export type WindowResizeResponse = z.infer<typeof WindowResizeResponseSchema>;
 
 

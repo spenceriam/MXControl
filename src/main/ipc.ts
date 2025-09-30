@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcMain, BrowserWindow } from 'electron';
 import {
   Channels,
   DeviceStatusSchema,
@@ -20,7 +20,10 @@ import {
   ProfilesSaveResponseSchema,
   SettingsGetResponseSchema,
   SettingsSaveRequestSchema,
-  SettingsSaveResponseSchema
+  SettingsSaveResponseSchema,
+  WindowResizeRequestSchema,
+  WindowResizeResponseSchema,
+  Channels
 } from '../shared/ipc';
 import { getSettings, listProfiles, saveProfiles, setSettings } from './persistence';
 import { disableAutostart, enableAutostart } from './autostart';
@@ -126,6 +129,15 @@ export function registerIpcHandlers() {
     if (req.autostart) enableAutostart();
     else disableAutostart();
     return SettingsSaveResponseSchema.parse({ success: true });
+  });
+
+  // Resize window to requested content size
+  ipcMain.handle(Channels.WindowResize, async (_e, payload) => {
+    const req = WindowResizeRequestSchema.parse(payload);
+    const win = BrowserWindow.getAllWindows()[0];
+    if (!win) return WindowResizeResponseSchema.parse({ success: false });
+    win.setContentSize(req.width, req.height);
+    return WindowResizeResponseSchema.parse({ success: true });
   });
 }
 

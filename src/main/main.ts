@@ -13,6 +13,7 @@ function createMainWindow() {
     width: 900,
     height: 650,
     resizable: false,
+    useContentSize: true,
     webPreferences: {
       preload: path.join(__dirname, '../../preload/preload/preload.js'),
       contextIsolation: true,
