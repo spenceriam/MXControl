@@ -6,4 +6,18 @@
   color-scheme: dark;
 }
 
+/* Ensure no browser default margins or scrollbars create overflow */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  background: #000;
+  overflow: hidden; /* we dynamically resize the window to fit content */
+}
+
+/* Just in case, hide any webkit scrollbars that might appear transiently */
+*::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+}
+
 

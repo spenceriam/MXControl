@@ -135,23 +135,30 @@ export default function App() {
   // Resize the window to fit content (no scrollbars)
   useEffect(() => {
     const WIDTH = 900;
-    const resize = () => {
-      const height = document.documentElement.scrollHeight;
-      window.mxc?.resizeWindow?.({ width: WIDTH, height });
-    };
-    const id = requestAnimationFrame(resize);
-    return () => cancelAnimationFrame(id);
-  }, [active]);
+    const root = document.getElementById('root') ?? document.body;
+    let raf = 0;
 
-  useEffect(() => {
-    const WIDTH = 900;
-    const resize = () => {
-      const height = document.documentElement.scrollHeight;
+    const measureAndResize = () => {
+      // Measure full content height and add 1px buffer to prevent bars from rounding
+      const height = Math.ceil((root?.scrollHeight || document.documentElement.scrollHeight) + 1);
       window.mxc?.resizeWindow?.({ width: WIDTH, height });
     };
-    const id = requestAnimationFrame(resize);
-    return () => cancelAnimationFrame(id);
-  }, []);
+
+    // Observe content size changes
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(measureAndResize);
+    });
+    ro.observe(root);
+
+    // Initial
+    raf = requestAnimationFrame(measureAndResize);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [active]);
 
   return (
     <div className="w-[900px] bg-black text-white flex flex-col overflow-hidden">
