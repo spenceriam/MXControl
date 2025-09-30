@@ -120,11 +120,8 @@ export class HIDService {
       // Initialize HID++ protocol (Bluetooth uses device index 0xff)
       this.hidpp = new HIDPPProtocol(this.device, isBluetooth);
       
-      // Test connection with ping (with internal timeout)
-      const pingOk = await this.hidpp.ping();
-      if (!pingOk) {
-        throw new Error('Device did not respond to ping');
-      }
+      // Verify device responds by fetching protocol version (robust across transports)
+      await this.hidpp.getProtocolVersion();
       
       // Discover features for caching
       await this.hidpp.discoverFeatures();
