@@ -46,23 +46,37 @@ export class HIDService {
   }
   discover(): HidDeviceInfo[] {
     try {
-      // Find Logitech MX devices, prioritizing HID++ interface (usagePage 0xff43)
+      // Enumerate all HID devices
       const allDevices = HID.devices();
-      const mxDevices = allDevices.filter(
-        (d) =>
-          d.vendorId === 0x046d &&
-          (d.productId === 0xb019 || // MX Master 2S
-            (d.product ?? '').toLowerCase().includes('mx master'))
-      );
+
+      // Candidate filters:
+      // - Logitech vendor (0x046d)
+      // - OR Logitech HID++ usage page (0xff43)
+      // - OR product name contains "mx master"
+      const candidates = allDevices.filter((d) => {
+        const isLogitech = d.vendorId === 0x046d;
+        const isHidpp = (d.usagePage as any) === 0xff43;
+        const name = (d.product ?? '').toLowerCase();
+        const isMxName = name.includes('mx master') || name.includes('master 2s');
+        return isLogitech || isHidpp || isMxName;
+      });
 
       // Prefer HID++ interface if available
-      const hidppDevices = mxDevices.filter((d) => d.usagePage === 0xff43);
-      const devicesToUse = hidppDevices.length > 0 ? hidppDevices : mxDevices;
+      const hidppDevices = candidates.filter((d) => (d.usagePage as any) === 0xff43);
+      const preferred = hidppDevices.length > 0 ? hidppDevices : candidates;
 
-      return devicesToUse.map((d) => ({
+      // Dedupe by path (Bluetooth often reports multiple logical interfaces with same hidraw)
+      const byPath = new Map<string, typeof preferred[number]>();
+      for (const d of preferred) {
+        if (d.path) byPath.set(d.path, d);
+      }
+      const unique = Array.from(byPath.values());
+
+      // Map to API shape
+      return unique.map((d) => ({
         path: d.path!,
-        vendorId: d.vendorId!,
-        productId: d.productId!,
+        vendorId: d.vendorId ?? 0,
+        productId: d.productId ?? 0,
         serialNumber: d.serialNumber,
         manufacturer: d.manufacturer,
         product: d.product
