@@ -47,12 +47,15 @@ export function registerIpcHandlers() {
   });
 
   ipcMain.handle(Channels.DeviceDiscover, async () => {
+    console.log('[IPC] DeviceDiscover called');
     const devices = hidService.discover();
+    console.log(`[IPC] DeviceDiscover returning ${devices.length} devices`);
     const dto = { devices };
     return DeviceDiscoverResponseSchema.parse(dto);
   });
 
   ipcMain.handle(Channels.DeviceConnect, async (_e, payload) => {
+    console.log('[IPC] DeviceConnect called with payload:', payload);
     const req = DeviceConnectRequestSchema.parse(payload);
     try {
       // Find the device info by path
@@ -60,16 +63,20 @@ export function registerIpcHandlers() {
       const device = devices.find(d => d.path === req.path);
       
       if (!device) {
+        console.log('[IPC] DeviceConnect: Device not found in discovery list');
         return DeviceConnectResponseSchema.parse({
           success: false,
           error: 'Device not found'
         });
       }
       
+      console.log('[IPC] DeviceConnect: Starting connection...');
       await hidService.connect(device);
+      console.log('[IPC] DeviceConnect: Connection successful');
       return DeviceConnectResponseSchema.parse({ success: true });
     } catch (err) {
       const error = err instanceof Error ? err.message : 'Unknown error';
+      console.log('[IPC] DeviceConnect error:', error);
       return DeviceConnectResponseSchema.parse({ success: false, error });
     }
   });
