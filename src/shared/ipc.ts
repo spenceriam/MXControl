@@ -12,6 +12,12 @@ export const Channels = {
   UpdateButtons: 'mxc/v1/mouse/update-buttons' as const,
   UpdateGesture: 'mxc/v1/mouse/update-gesture' as const,
   UpdateScroll: 'mxc/v1/scrolling/update' as const,
+  // New button configuration channels
+  ButtonsSet: 'mxc/v1/buttons/set' as const,
+  ButtonsGet: 'mxc/v1/buttons/get' as const,
+  // New gesture configuration channels
+  GesturesSensitivity: 'mxc/v1/gestures/set-sensitivity' as const,
+  GesturesGet: 'mxc/v1/gestures/get' as const,
   ProfilesList: 'mxc/v1/profiles/list' as const,
   ProfilesSave: 'mxc/v1/profiles/save' as const,
   SettingsGet: 'mxc/v1/settings/get' as const,
@@ -106,4 +112,29 @@ export type WindowResizeRequest = z.infer<typeof WindowResizeRequestSchema>;
 export const WindowResizeResponseSchema = z.object({ success: z.boolean() });
 export type WindowResizeResponse = z.infer<typeof WindowResizeResponseSchema>;
 
+// Button configuration
+export const ButtonsSetRequestSchema = z.object({
+  buttonName: z.string(),
+  action: z.string()
+});
+export type ButtonsSetRequest = z.infer<typeof ButtonsSetRequestSchema>;
+export const ButtonsSetResponseSchema = z.object({ success: z.boolean() });
+export type ButtonsSetResponse = z.infer<typeof ButtonsSetResponseSchema>;
+
+export const ButtonsGetResponseSchema = z.record(z.string(), z.string());
+export type ButtonsGetResponse = z.infer<typeof ButtonsGetResponseSchema>;
+
+// Gesture configuration
+export const GesturesSensitivityRequestSchema = z.object({
+  sensitivity: z.number().int().min(1).max(10)
+});
+export type GesturesSensitivityRequest = z.infer<typeof GesturesSensitivityRequestSchema>;
+export const GesturesSensitivityResponseSchema = z.object({ success: z.boolean() });
+export type GesturesSensitivityResponse = z.infer<typeof GesturesSensitivityResponseSchema>;
+
+export const GesturesGetResponseSchema = z.object({
+  enabled: z.boolean(),
+  sensitivity: z.number()
+});
+export type GesturesGetResponse = z.infer<typeof GesturesGetResponseSchema>;
 

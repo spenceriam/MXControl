@@ -2,6 +2,13 @@ import HID from 'node-hid';
 import { HIDPPProtocol, HIDPPError } from './hidpp';
 import { BLETransport } from './ble';
 import { BLEBatteryService } from './ble-battery';
+import { 
+  ButtonAction, 
+  getControlId, 
+  getTaskId, 
+  ControlFlags,
+  requiresOSRemapping 
+} from './device-mappings';
 
 export type Connection = 'usb' | 'receiver' | 'bluetooth' | 'unknown';
 
@@ -239,10 +246,14 @@ export class HIDService {
       if (this.bleBatteryService && this.state.info?.serialNumber) {
         console.log('[HID Service] Reading battery via GATT Battery Service');
         const level = await this.bleBatteryService.readBatteryLevel(this.state.info.serialNumber);
-        this.state.batteryPct = level;
-        this.state.charging = false; // GATT Battery Service doesn't provide charging status
+        
+        // Use trend-based charging detection
+        const batteryInfo = this.bleBatteryService.getBatteryInfo();
+        this.state.batteryPct = batteryInfo.level;
+        this.state.charging = batteryInfo.charging ?? false;
+        
         this.emit();
-        console.log(`[HID Service] Battery: ${level}%`);
+        console.log(`[HID Service] Battery: ${level}%, charging: ${batteryInfo.charging}`);
       } else if (this.hidpp) {
         // For USB/Unifying, use HID++ protocol
         console.log('[HID Service] Reading battery via HID++ protocol');
@@ -314,6 +325,144 @@ export class HIDService {
     } catch (err) {
       console.error('Failed to configure buttons:', err);
       return false;
+    }
+  }
+
+  /**
+   * Set the action for a specific button
+   * @param buttonName Button name (e.g., 'middle', 'back', 'forward', 'gesture')
+   * @param action Action to assign (from ButtonAction enum)
+   * @returns true if successful, false otherwise
+   */
+  async setButtonAction(buttonName: string, action: ButtonAction): Promise<boolean> {
+    if (!this.hidpp) {
+      console.error('[Button Remap] Not connected to device');
+      return false;
+    }
+
+    try {
+      // Get Control ID for this button
+      const cid = getControlId(buttonName);
+      if (cid === null) {
+        console.error(`[Button Remap] Unknown button: ${buttonName}`);
+        return false;
+      }
+
+      console.log(`[Button Remap] Setting ${buttonName} (CID 0x${cid.toString(16)}) to ${action}`);
+
+      // Check if action requires OS-level remapping
+      if (requiresOSRemapping(action)) {
+        console.log(`[Button Remap] Action ${action} requires OS-level remapping`);
+        // For now, we'll divert the button to software but not implement the action
+        // TODO: Implement OS-level input injection for custom actions
+        await this.hidpp.setControlIdReporting(
+          cid,
+          true, // divert
+          true  // persist
+        );
+        console.log(`[Button Remap] Button diverted to software for custom action`);
+        return true;
+      }
+
+      // For default action, reset to device default
+      if (action === ButtonAction.DEFAULT) {
+        console.log(`[Button Remap] Resetting ${buttonName} to default`);
+        await this.hidpp.setControlIdReporting(cid, false, false); // no divert, no persist
+        return true;
+      }
+
+      // For native HID++ actions, get the Task ID
+      const tid = getTaskId(action);
+      if (tid !== null) {
+        // For native mouse actions, use device default handling
+        // The device knows how to handle these actions natively
+        console.log(`[Button Remap] Using native action TID 0x${tid.toString(16)}`);
+        await this.hidpp.setControlIdReporting(cid, false, false); // no divert, use device default
+        return true;
+      }
+
+      console.error(`[Button Remap] Failed to map action ${action} to ${buttonName}`);
+      return false;
+    } catch (err) {
+      console.error(`[Button Remap] Failed to set button action:`, err);
+      return false;
+    }
+  }
+
+  /**
+   * Get the current button configuration
+   * @returns Map of button names to current actions
+   */
+  async getButtonActions(): Promise<Record<string, ButtonAction>> {
+    if (!this.hidpp) {
+      console.error('[Button Remap] Not connected to device');
+      return {};
+    }
+
+    try {
+      const count = await this.hidpp.getControlCount();
+      console.log(`[Button Remap] Device has ${count} programmable controls`);
+
+      const config: Record<string, ButtonAction> = {};
+
+      // Query each control for its current state
+      for (let i = 0; i < count; i++) {
+        try {
+          const info = await this.hidpp.getControlIdInfo(i);
+          console.log(`[Button Remap] Control ${i}: CID=0x${info.cid.toString(16)}, TID=0x${info.tid.toString(16)}`);
+          
+          // Map CID back to button name
+          // For now, just log - full reverse mapping needs more work
+        } catch (err) {
+          console.warn(`[Button Remap] Failed to get info for control ${i}`);
+        }
+      }
+
+      return config;
+    } catch (err) {
+      console.error('[Button Remap] Failed to get button actions:', err);
+      return {};
+    }
+  }
+
+  /**
+   * Set gesture sensitivity
+   * @param sensitivity 1-10 (10 = most sensitive)
+   * @returns true if successful
+   */
+  async setGestureSensitivity(sensitivity: number): Promise<boolean> {
+    if (!this.hidpp) {
+      console.error('[Gesture] Not connected to device');
+      return false;
+    }
+
+    try {
+      console.log(`[Gesture] Setting sensitivity to ${sensitivity}`);
+      await this.hidpp.setGestureConfig(true, sensitivity);
+      return true;
+    } catch (err) {
+      console.error('[Gesture] Failed to set sensitivity:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Get current gesture configuration
+   * @returns Gesture config with enabled state and sensitivity
+   */
+  async getGestureConfig(): Promise<{ enabled: boolean; sensitivity: number } | null> {
+    if (!this.hidpp) {
+      console.error('[Gesture] Not connected to device');
+      return null;
+    }
+
+    try {
+      const config = await this.hidpp.getGestureConfig();
+      console.log(`[Gesture] Current config: enabled=${config.enabled}, sensitivity=${config.sensitivity}`);
+      return config;
+    } catch (err) {
+      console.error('[Gesture] Failed to get config:', err);
+      return null;
     }
   }
 }

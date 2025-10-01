@@ -22,11 +22,18 @@ import {
   SettingsSaveRequestSchema,
   SettingsSaveResponseSchema,
   WindowResizeRequestSchema,
-  WindowResizeResponseSchema
+  WindowResizeResponseSchema,
+  ButtonsSetRequestSchema,
+  ButtonsSetResponseSchema,
+  ButtonsGetResponseSchema,
+  GesturesSensitivityRequestSchema,
+  GesturesSensitivityResponseSchema,
+  GesturesGetResponseSchema
 } from '../shared/ipc';
 import { getSettings, listProfiles, saveProfiles, setSettings } from './persistence';
 import { disableAutostart, enableAutostart } from './autostart';
 import { hidService } from './hid/service';
+import { ButtonAction } from './hid/device-mappings';
 
 export function registerIpcHandlers() {
   ipcMain.handle(Channels.Ping, async () => {
@@ -144,6 +151,34 @@ export function registerIpcHandlers() {
     if (!win) return WindowResizeResponseSchema.parse({ success: false });
     win.setContentSize(req.width, req.height);
     return WindowResizeResponseSchema.parse({ success: true });
+  });
+
+  // Button configuration
+  ipcMain.handle(Channels.ButtonsSet, async (_e, payload) => {
+    const req = ButtonsSetRequestSchema.parse(payload);
+    const action = req.action as ButtonAction;
+    const success = await hidService.setButtonAction(req.buttonName, action);
+    return ButtonsSetResponseSchema.parse({ success });
+  });
+
+  ipcMain.handle(Channels.ButtonsGet, async () => {
+    const config = await hidService.getButtonActions();
+    return ButtonsGetResponseSchema.parse(config);
+  });
+
+  // Gesture configuration
+  ipcMain.handle(Channels.GesturesSensitivity, async (_e, payload) => {
+    const req = GesturesSensitivityRequestSchema.parse(payload);
+    const success = await hidService.setGestureSensitivity(req.sensitivity);
+    return GesturesSensitivityResponseSchema.parse({ success });
+  });
+
+  ipcMain.handle(Channels.GesturesGet, async () => {
+    const config = await hidService.getGestureConfig();
+    if (!config) {
+      return GesturesGetResponseSchema.parse({ enabled: false, sensitivity: 5 });
+    }
+    return GesturesGetResponseSchema.parse(config);
   });
 }
 
