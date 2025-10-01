@@ -9,7 +9,7 @@ const REPORT_ID_LONG = 0x11;
 
 // Device Index
 const DEVICE_INDEX_RECEIVER = 0x00;
-const DEVICE_INDEX_BLUETOOTH = 0xff;
+const DEVICE_INDEX_BLUETOOTH = 0x02; // For BLE, use 0x02 (has actual HID++ data)!
 
 // Root Feature
 const FEATURE_ROOT = 0x0000;
@@ -160,9 +160,24 @@ export class HIDPPProtocol {
       // Still process error responses through handlers
     }
 
-    const key = `${featureIndex}:${functionId}:${softwareId}`;
+    // For BLE, try matching without software ID first (device may not echo it correctly)
+    let key = `${featureIndex}:${functionId}:${softwareId}`;
     console.log(`[HID++] Looking for handler: ${key}`);
-    const handler = this.pendingResponses.get(key);
+    let handler = this.pendingResponses.get(key);
+    
+    // If not found and using BLE, try all pending handlers for this feature+function
+    if (!handler && this.useBLE) {
+      console.log(`[HID++] Trying to match by feature+function only (BLE workaround)`);
+      for (const [pendingKey, pendingHandler] of this.pendingResponses.entries()) {
+        const [pendingFeat, pendingFunc] = pendingKey.split(':').map(Number);
+        if (pendingFeat === featureIndex && pendingFunc === functionId) {
+          console.log(`[HID++] Found matching handler: ${pendingKey}`);
+          handler = pendingHandler;
+          key = pendingKey; // Use the pending key for deletion
+          break;
+        }
+      }
+    }
     if (handler) {
       console.log(`[HID++] Handler found, calling it`);
       this.pendingResponses.delete(key);
