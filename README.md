@@ -19,6 +19,9 @@ Linux-native configuration tool for Logitech MX Master mice (Options+ alternativ
 ## Prereqs (Linux)
 - Node.js 18+
 - USB HID support, user in `input` group, udev rules for `hidraw`
+- **IMPORTANT**: Logitech Unifying USB receiver required - Bluetooth is NOT supported
+  - MX mice only support HID++ protocol via Unifying receiver, not Bluetooth
+  - Connect your mouse to a Logitech Unifying receiver to use this application
 - See `docs/permissions.md`
 
 ## Quick start (dev)

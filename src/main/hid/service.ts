@@ -135,10 +135,33 @@ export class HIDService {
       this.hidpp = new HIDPPProtocol(this.device, isBluetooth);
       console.log(`[HID Connect] HID++ protocol initialized`);
       
-      // Verify device responds by fetching protocol version (robust across transports)
-      console.log(`[HID Connect] Verifying connection with getProtocolVersion...`);
-      const version = await this.hidpp.getProtocolVersion();
-      console.log(`[HID Connect] Protocol version: ${version.major}.${version.minor}`);
+      // Verify device responds with a simple ping first (more reliable)
+      console.log(`[HID Connect] Verifying connection with ping...`);
+      const pingSuccess = await this.hidpp.ping();
+      if (!pingSuccess) {
+        console.warn(`[HID Connect] Ping failed, trying getProtocolVersion...`);
+        // Fallback to getProtocolVersion
+        try {
+          const version = await this.hidpp.getProtocolVersion();
+          console.log(`[HID Connect] Protocol version: ${version.major}.${version.minor}`);
+        } catch (err) {
+          console.error(`[HID Connect] Both ping and getProtocolVersion failed`);
+          
+          // Special message for Bluetooth connections
+          if (isBluetooth) {
+            throw new Error(
+              'HID++ protocol not supported over Bluetooth. ' +
+              'Logitech MX mice only support HID++ when connected via a ' +
+              'Logitech Unifying USB receiver. Please connect your mouse ' +
+              'to a Unifying receiver to use this application.'
+            );
+          }
+          
+          throw new Error('Device not responding to HID++ commands');
+        }
+      } else {
+        console.log(`[HID Connect] Ping successful`);
+      }
       
       // Discover features for caching
       console.log(`[HID Connect] Discovering features...`);

@@ -63,10 +63,29 @@ export class HIDPPProtocol {
     this.device = device;
     this.deviceIndex = isBluetooth ? DEVICE_INDEX_BLUETOOTH : DEVICE_INDEX_RECEIVER;
     
+    console.log(`[HID++] Constructor: Setting up device listeners (deviceIndex=0x${this.deviceIndex.toString(16).padStart(2, '0')})`);
+    
     // Set up data listener for responses
     this.device.on('data', (data: Buffer) => {
       this.handleResponse(data);
     });
+    
+    // Set up error listener
+    this.device.on('error', (err: Error) => {
+      console.error('[HID++] Device error:', err);
+    });
+    
+    // Try to set non-blocking mode (may not be needed, but doesn't hurt)
+    try {
+      // Some versions of node-hid support setNonBlocking
+      if (typeof (this.device as any).setNonBlocking === 'function') {
+        (this.device as any).setNonBlocking(true);
+        console.log('[HID++] Set device to non-blocking mode');
+      }
+    } catch (err) {
+      // Ignore if not supported
+      console.log('[HID++] setNonBlocking not supported (this is OK)');
+    }
   }
   
   // Ensure device is valid before operations
@@ -77,7 +96,12 @@ export class HIDPPProtocol {
   }
 
   private handleResponse(data: Buffer): void {
-    if (data.length < 7) return;
+    console.log(`[HID++] Raw response received (${data.length} bytes): ${data.slice(0, Math.min(data.length, 16)).toString('hex')}`);
+    
+    if (data.length < 7) {
+      console.log(`[HID++] Response too short, ignoring`);
+      return;
+    }
 
     const reportId = data[0];
     const deviceIndex = data[1];
@@ -85,17 +109,24 @@ export class HIDPPProtocol {
     const functionId = (data[3] >> 4) & 0x0f;
     const softwareId = data[3] & 0x0f;
 
+    console.log(`[HID++] Parsed: reportId=0x${reportId.toString(16).padStart(2, '0')} devIdx=0x${deviceIndex.toString(16).padStart(2, '0')} featIdx=0x${featureIndex.toString(16).padStart(2, '0')} funcId=0x${functionId.toString(16)} swId=0x${softwareId.toString(16)}`);
+
     // Check if this is an error response
     if (featureIndex === 0x8f) {
+      console.log(`[HID++] Error response detected`);
       // Error response format
       return;
     }
 
     const key = `${featureIndex}:${functionId}:${softwareId}`;
+    console.log(`[HID++] Looking for handler: ${key}`);
     const handler = this.pendingResponses.get(key);
     if (handler) {
+      console.log(`[HID++] Handler found, calling it`);
       this.pendingResponses.delete(key);
       handler(data);
+    } else {
+      console.log(`[HID++] No handler found for response`);
     }
   }
 
@@ -121,15 +152,20 @@ export class HIDPPProtocol {
       params.copy(report, 4, 0, Math.min(params.length, reportSize - 4));
     }
 
+    console.log(`[HID++] Sending command: featureIdx=0x${featureIndex.toString(16).padStart(2, '0')} funcId=0x${functionId.toString(16)} swId=0x${this.softwareId.toString(16)} devIdx=0x${this.deviceIndex.toString(16).padStart(2, '0')}`);
+    console.log(`[HID++] Report: ${report.slice(0, Math.min(report.length, 16)).toString('hex')}`);
+
     return new Promise((resolve, reject) => {
       const key = `${featureIndex}:${functionId}:${this.softwareId}`;
       const timeout = setTimeout(() => {
+        console.log(`[HID++] Timeout waiting for response: ${key}`);
         this.pendingResponses.delete(key);
         reject(new HIDPPError('Device response timeout', -1));
-      }, 2000);
+      }, 3000); // Increased timeout to 3s
 
       this.pendingResponses.set(key, (response: Buffer) => {
         clearTimeout(timeout);
+        console.log(`[HID++] Received response: ${response.slice(0, Math.min(response.length, 16)).toString('hex')}`);
         
         // Check for error
         if (response[2] === 0x8f && response.length >= 7) {
@@ -142,8 +178,23 @@ export class HIDPPProtocol {
       });
 
       try {
-        this.device.write(Array.from(report));
+        // Try different write methods for compatibility
+        // Method 1: Try write with report ID (most common for hidraw)
+        console.log(`[HID++] Writing ${report.length} bytes to device`);
+        console.log(`[HID++] Full report hex: ${report.toString('hex')}`);
+        
+        try {
+          const bytesWritten = this.device.write(Array.from(report));
+          console.log(`[HID++] Write returned: ${bytesWritten} bytes`);
+        } catch (writeErr) {
+          console.error(`[HID++] Standard write failed:`, writeErr);
+          // Try without report ID as fallback
+          console.log(`[HID++] Trying write without report ID...`);
+          const bytesWritten = this.device.write(Array.from(report.slice(1)));
+          console.log(`[HID++] Write (no report ID) returned: ${bytesWritten} bytes`);
+        }
       } catch (err) {
+        console.error(`[HID++] All write attempts failed:`, err);
         clearTimeout(timeout);
         this.pendingResponses.delete(key);
         reject(err);
