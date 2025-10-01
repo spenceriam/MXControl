@@ -632,3 +632,34 @@ Bluetooth support is **fully functional**:
 - HID++ protocol confirmed working
 - Ready to implement in production code
 
+#### 2025-10-01: Battery via BLE verified as 90%; DPI UX pivot
+
+Context (Zorin OS):
+- Ran `test-battery-verification.js` against MX Master 2S over BLE.
+- Script confirms BlueZ is running, device is connected, and GATT Battery Service 0x180F with characteristic 0x2A19 is present.
+- Raw read returns 0x5A (decimal 90), i.e., 90% battery. Multiple reads show the same value.
+- Script requires Ctrl+C to exit after verification sequence (expected behavior).
+
+Battery findings:
+- Battery percentage is REAL hardware data via GATT, not mock/fallback.
+- Logitech firmware often reports coarse-grained levels; staying at 90% after overnight charge is plausible (conservative reporting or charge ceiling below 100% to preserve battery).
+- Implemented trend-based charging detection in code (BLEBatteryService) using a 5-minute window across last 10 readings; HIDService uses this to report charging=true when the level increases over time. UI indicator will use this signal.
+
+DPI behavior and decision:
+- HID++ setSensorDPI over BLE sends successfully but yields no user-visible effect; device returns extended/cached BLE responses without per-command ACK and we cannot reliably read back current DPI.
+- To ensure a reliable UX across Linux distros, we will pivot from hardware DPI to an OS-level pointer sensitivity control exposed as a simple slider (1–10), centered by default. This matches user expectations and desktop environment behavior.
+
+Decisions (MVP):
+- Keep GATT battery reading as the source of truth for Bluetooth. Accept coarse values (e.g., 90%) and show charging via trend detection.
+- Deprecate hardware DPI control for BLE path in UI. Implement pointer sensitivity slider that adjusts OS pointer acceleration/speed (X11/Wayland). Retain HID++ DPI for USB/Unifying if verifiably effective.
+
+Planned changes (next tasks):
+- Pointer sensitivity service in Main: X11 (xinput/libXi via child process or node bindings) and Wayland (wtype/ydotool or desktop-specific APIs) with safe fallbacks.
+- IPC: `mxc/v1/pointer/set-sensitivity` taking 1–10 value; persist per profile.
+- UI: Replace DPI numeric field with a slider; label as "Pointer sensitivity"; default to 5/10.
+- Docs: Update USER_GUIDE to clarify battery behavior over BLE and sensitivity vs DPI.
+
+Risk/limitations:
+- Wayland environments may require compositor-specific APIs for pointer settings; we will document supported environments and fallbacks.
+- Battery percentage may not show 100% on all devices even when fully charged; we will document this behavior as device/firmware-specific.
+
