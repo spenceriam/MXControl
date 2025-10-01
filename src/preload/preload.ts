@@ -31,6 +31,7 @@ const api = {
 };
 
 contextBridge.exposeInMainWorld('mxc', api);
+console.log('[Preload] window.mxc exposed successfully', Object.keys(api));
 
 declare global {
   interface Window {
