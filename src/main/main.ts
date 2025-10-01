@@ -17,7 +17,7 @@ function createMainWindow() {
     webPreferences: {
       preload: path.join(__dirname, '../../preload/preload/preload.js'),
       contextIsolation: true,
-      sandbox: true,
+      sandbox: false, // Disabled to allow preload to require shared modules
       nodeIntegration: false,
       webSecurity: true,
       allowRunningInsecureContent: false,
