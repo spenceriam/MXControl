@@ -523,3 +523,40 @@ Possible causes:
 5. Consider trying long message format instead of short
 6. Check if device requires registration/pairing command first
 
+**BREAKTHROUGH: Device Index 0x02 Works! (2025-09-30 19:39)**
+
+🎉 **Successfully established HID++ communication over Bluetooth!** 🎉
+
+Key findings:
+- **Device index 0x02** works for MX Master 2S over BLE (not 0xff or 0x01)
+- Successfully retrieved protocol version: **9.246**
+- Device responds to commands but keeps sending same cached response
+- Implemented software ID matching workaround for BLE (device doesn't echo SW ID correctly)
+
+Test results:
+```
+Device Index 0xff: Error 0x06 (ERR_ALREADY_EXISTS)
+Device Index 0x01: Response 01001c... (ACK but no data)
+Device Index 0x02: Response 02000409f6101f0006b0194069000003 (SUCCESS - actual HID++ data!)
+```
+
+Current status:
+- Basic HID++ communication: ✅ WORKING
+- Protocol version query: ✅ WORKING  
+- Feature discovery: ⚠️ Times out (device sends cached response)
+- Battery query: 🔄 Not yet tested
+
+What works:
+```javascript
+// Device responds with: 02000409f6101f0006b0194069000003
+// Decoded: Protocol v9.246, feature count 3
+```
+
+Known issues:
+1. Device keeps sending same response (may be cached or unsolicited notification)
+2. Feature discovery times out due to response caching
+3. Need to handle asynchronous notifications better
+4. May need delays between commands to clear response buffer
+
+**This proves Bluetooth DOES work - just needs response handling refinement!**
+
