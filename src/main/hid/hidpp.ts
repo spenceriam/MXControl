@@ -447,6 +447,10 @@ export class HIDPPProtocol {
     params.writeUInt16BE(dpi, 1);
     
     await this.sendCommand(featureIndex, 0x02, params);
+    
+    // For BLE, the device responds with cached data instead of ACK
+    // The command was sent successfully if we get here without error
+    console.log(`[HID++] DPI set to ${dpi} (command sent successfully)`);
   }
 
   async getSensorDPIList(): Promise<number[]> {
@@ -517,6 +521,9 @@ export class HIDPPProtocol {
     params[3] = flags; // valid flags mask
     
     await this.sendCommand(featureIndex, 0x04, params);
+    
+    // For BLE, the device responds with cached data instead of ACK
+    console.log(`[HID++] Control ID reporting set (command sent successfully)`);
   }
 
   // Gesture (0x6501)
@@ -544,6 +551,9 @@ export class HIDPPProtocol {
     const params = Buffer.from([enabled ? 1 : 0, sensitivity]);
     
     await this.sendCommand(featureIndex, 0x01, params);
+    
+    // For BLE, the device responds with cached data instead of ACK
+    console.log(`[HID++] Gesture config set (command sent successfully)`);
   }
 
   // Utility to discover all features on the device
