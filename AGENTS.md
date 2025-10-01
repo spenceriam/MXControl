@@ -439,3 +439,87 @@ User MUST log out and log back in for `input` group membership to take effect.
 Without this, the application cannot access the hidraw device.
 Verify with: `groups | grep input`
 
+#### 2025-09-30: Bluetooth Support via BLE GATT (In Progress)
+
+**Discovery: Bluetooth Actually Works!**
+
+Initially believed Logitech MX mice didn't support HID++ over Bluetooth. This was WRONG!
+After investigation, discovered devices expose Logitech vendor-specific GATT service for HID++ communication.
+
+**Phase 1: BLE GATT Transport Implementation (Complete)**
+
+1. Created BLE transport layer (src/main/hid/ble.ts)
+   - Uses BlueZ D-Bus API via dbus-next library
+   - Connects to Logitech vendor-specific GATT service (UUID: 00010000-0000-1000-8000-011f2000046d)
+   - Communicates via characteristic (UUID: 00010001-0000-1000-8000-011f2000046d)
+   - Subscribes to GATT notifications for responses
+   - Handles connection, write, and cleanup operations
+
+2. Updated HIDPPProtocol to support dual transport
+   - Accepts either HID.HID or BLETransport
+   - Automatically detects transport type
+   - BLE uses different message format (no report ID prefix)
+   - Response parsing handles both HID and BLE formats
+   - Maintains separate device/bleTransport references
+
+3. Modified HIDService for automatic BLE usage
+   - Detects Bluetooth devices by MAC-formatted serial number
+   - Automatically uses BLE GATT for Bluetooth connections
+   - Falls back to traditional HID for Unifying receiver
+   - Increased connection timeout to 10 seconds for BLE
+   - Proper cleanup for both transport types
+
+4. Fixed TypeScript compilation issues
+   - Added proper type assertions for D-Bus object entries
+   - Fixed async/await in sendCommand method
+   - Removed non-existent updateGesture method from IPC
+
+**Current Status: Device Responds Over BLE!**
+
+Successful BLE connection established:
+- ✅ Device found via BlueZ D-Bus
+- ✅ GATT characteristic discovered
+- ✅ Notifications subscribed
+- ✅ Commands sent successfully
+- ✅ Device responds to commands
+
+**Current Issue: Error Response (ERR_ALREADY_EXISTS)**
+
+Device responds with error code 0x06 (ERR_ALREADY_EXISTS) to both ping and getProtocolVersion.
+Response format: `ffff00060000000000000000000000000000`
+- Device index: 0xff (correct for Bluetooth)
+- Feature index: 0xff (error indicator)
+- Error code: 0x06 at byte offset 5
+
+Possible causes:
+1. Device requires different initialization sequence for BLE
+2. Device may need specific pairing/bonding state
+3. MX Master 2S may use different device index over BLE
+4. May need to try device indices 0x01 or 0x02 instead of 0xff
+5. Logitech may use modified HID++ protocol for BLE (need to research Solaar implementation)
+
+**Dependencies Added:**
+- @abandonware/noble (for BLE support, though ended up using dbus-next)
+- dbus-next (for BlueZ D-Bus communication)
+
+**Files Modified:**
+- src/main/hid/ble.ts (new - 198 lines)
+- src/main/hid/hidpp.ts (major update - dual transport support)
+- src/main/hid/service.ts (updated for BLE detection)
+- src/main/ipc.ts (removed non-existent method)
+- README.md (updated with Bluetooth support note)
+- docs/bluetooth-limitation.md (created then needs update)
+
+**Test Scripts Created:**
+- test-hid.js (HID raw communication test)
+- test-ble.js (Noble BLE test - requires sudo)
+- test-ble-dbus.js (D-Bus BLE test - SUCCESSFUL!)
+
+**Next Steps:**
+1. Try different device indices (0x01, 0x02) for BLE
+2. Research Solaar's BLE implementation for MX Master 2S
+3. Check if device needs different command format
+4. May need to inspect HID++ spec for BLE-specific requirements
+5. Consider trying long message format instead of short
+6. Check if device requires registration/pairing command first
+

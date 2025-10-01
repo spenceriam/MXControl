@@ -1,6 +1,5 @@
 import HID from 'node-hid';
 import { HIDPPProtocol, HIDPPError } from './hidpp';
-import { BLETransport } from './ble';
 
 export type Connection = 'usb' | 'receiver' | 'bluetooth' | 'unknown';
 
@@ -25,7 +24,6 @@ type Listener = (s: HidState) => void;
 
 export class HIDService {
   private device: HID.HID | null = null;
-  private bleTransport: BLETransport | null = null;
   private hidpp: HIDPPProtocol | null = null;
   private state: HidState = { connected: false, connection: 'unknown', batteryPct: 0, charging: false };
   private pollTimer: NodeJS.Timeout | null = null;
@@ -103,7 +101,7 @@ export class HIDService {
     this.close();
     
     // Create timeout promise
-    const timeoutMs = 10000; // Increased for BLE
+    const timeoutMs = 5000;
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error(`Connection timeout after ${timeoutMs}ms`)), timeoutMs);
     });
@@ -122,6 +120,8 @@ export class HIDService {
     try {
       console.log(`[HID Connect] Opening device: ${info.path}`);
       console.log(`[HID Connect] Product: ${info.product}, Serial: ${info.serialNumber}`);
+      this.device = new HID.HID(info.path);
+      console.log(`[HID Connect] Device opened successfully`);
       
       // Detect connection type based on strong heuristics (Linux Bluetooth often uses hidraw with MAC serial)
       const serialLooksLikeMac = !!info.serialNumber && /([0-9a-f]{2}:){5}[0-9a-f]{2}/i.test(info.serialNumber);
@@ -131,29 +131,9 @@ export class HIDService {
       this.state.connection = isBluetooth ? 'bluetooth' : 'receiver';
       console.log(`[HID Connect] Connection type: ${this.state.connection} (BT=${isBluetooth}, serialMAC=${serialLooksLikeMac}, pathBT=${pathHintsBt})`);
       
-      // For Bluetooth devices, use BLE GATT instead of HID
-      if (isBluetooth && info.serialNumber) {
-        console.log(`[HID Connect] Bluetooth device detected, using BLE GATT transport`);
-        this.bleTransport = new BLETransport();
-        await this.bleTransport.connect({
-          address: info.serialNumber,
-          name: info.product
-        });
-        console.log(`[HID Connect] BLE connected successfully`);
-        
-        // Initialize HID++ protocol with BLE transport
-        this.hidpp = new HIDPPProtocol(this.bleTransport, true);
-        console.log(`[HID++] Protocol initialized with BLE transport`);
-      } else {
-        // Use traditional HID for Unifying receiver
-        console.log(`[HID Connect] Using HID transport`);
-        this.device = new HID.HID(info.path);
-        console.log(`[HID Connect] HID device opened successfully`);
-        
-        // Initialize HID++ protocol with HID transport
-        this.hidpp = new HIDPPProtocol(this.device, isBluetooth);
-        console.log(`[HID++] Protocol initialized with HID transport`);
-      }
+      // Initialize HID++ protocol (Bluetooth uses device index 0xff)
+      this.hidpp = new HIDPPProtocol(this.device, isBluetooth);
+      console.log(`[HID Connect] HID++ protocol initialized`);
       
       // Verify device responds with a simple ping first (more reliable)
       console.log(`[HID Connect] Verifying connection with ping...`);
@@ -166,6 +146,17 @@ export class HIDService {
           console.log(`[HID Connect] Protocol version: ${version.major}.${version.minor}`);
         } catch (err) {
           console.error(`[HID Connect] Both ping and getProtocolVersion failed`);
+          
+          // Special message for Bluetooth connections
+          if (isBluetooth) {
+            throw new Error(
+              'HID++ protocol not supported over Bluetooth. ' +
+              'Logitech MX mice only support HID++ when connected via a ' +
+              'Logitech Unifying USB receiver. Please connect your mouse ' +
+              'to a Unifying receiver to use this application.'
+            );
+          }
+          
           throw new Error('Device not responding to HID++ commands');
         }
       } else {
@@ -204,12 +195,6 @@ export class HIDService {
     if (this.hidpp) {
       this.hidpp.close();
       this.hidpp = null;
-    }
-    if (this.bleTransport) {
-      try {
-        this.bleTransport.close();
-      } catch {}
-      this.bleTransport = null;
     }
     if (this.device) {
       try {
@@ -286,13 +271,30 @@ export class HIDService {
     try {
       // For now, just verify the feature is available
       // Actual button remapping requires mapping UI actions to Control IDs
-      await this.hidpp.getControlCount();
+      const count = await this.hidpp.getControlCount();
+      console.log(`Device has ${count} reprogrammable controls`);
       return true;
     } catch (err) {
-      console.error('Failed to configure buttons:', err);
+      console.error('Failed to update buttons:', err);
+      return false;
+    }
+  }
+
+  async updateGesture(): Promise<boolean> {
+    if (!this.hidpp) return false;
+    
+    try {
+      // Get current gesture config to verify feature works
+      const config = await this.hidpp.getGestureConfig();
+      console.log('Gesture config:', config);
+      return true;
+    } catch (err) {
+      console.error('Failed to update gesture:', err);
       return false;
     }
   }
 }
 
 export const hidService = new HIDService();
+
+

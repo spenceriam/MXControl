@@ -1,4 +1,5 @@
 import HID from 'node-hid';
+import { BLETransport } from './ble';
 
 // HID++ 2.0 Protocol Implementation for Logitech MX Master 2S
 
@@ -52,45 +53,64 @@ export class HIDPPError extends Error {
 }
 
 export class HIDPPProtocol {
-  private device: HID.HID;
+  private device: HID.HID | null = null;
+  private bleTransport: BLETransport | null = null;
   private deviceIndex: number;
   private softwareId: number = 0x01;
   private featureCache: Map<number, number> = new Map();
   private pendingResponses: Map<string, (data: Buffer) => void> = new Map();
   private closed: boolean = false;
+  private useBLE: boolean = false;
 
-  constructor(device: HID.HID, isBluetooth: boolean = true) {
-    this.device = device;
+  constructor(device: HID.HID | BLETransport, isBluetooth: boolean = true) {
+    // Determine if this is a BLE transport or HID device
+    this.useBLE = device instanceof BLETransport;
+    
+    if (this.useBLE) {
+      this.bleTransport = device as BLETransport;
+      this.device = null;
+    } else {
+      this.device = device as HID.HID;
+      this.bleTransport = null;
+    }
+    
     this.deviceIndex = isBluetooth ? DEVICE_INDEX_BLUETOOTH : DEVICE_INDEX_RECEIVER;
     
-    console.log(`[HID++] Constructor: Setting up device listeners (deviceIndex=0x${this.deviceIndex.toString(16).padStart(2, '0')})`);
+    console.log(`[HID++] Constructor: transport=${this.useBLE ? 'BLE' : 'HID'}, deviceIndex=0x${this.deviceIndex.toString(16).padStart(2, '0')}`);
     
-    // Set up data listener for responses
-    this.device.on('data', (data: Buffer) => {
-      this.handleResponse(data);
-    });
-    
-    // Set up error listener
-    this.device.on('error', (err: Error) => {
-      console.error('[HID++] Device error:', err);
-    });
-    
-    // Try to set non-blocking mode (may not be needed, but doesn't hurt)
-    try {
-      // Some versions of node-hid support setNonBlocking
-      if (typeof (this.device as any).setNonBlocking === 'function') {
-        (this.device as any).setNonBlocking(true);
-        console.log('[HID++] Set device to non-blocking mode');
+    if (this.useBLE && this.bleTransport) {
+      // Set up BLE data listener
+      this.bleTransport.on('data', (data: Buffer) => {
+        this.handleResponse(data);
+      });
+    } else if (this.device) {
+      // Set up HID data listener for responses
+      this.device.on('data', (data: Buffer) => {
+        this.handleResponse(data);
+      });
+      
+      // Set up error listener
+      this.device.on('error', (err: Error) => {
+        console.error('[HID++] Device error:', err);
+      });
+      
+      // Try to set non-blocking mode (may not be needed, but doesn't hurt)
+      try {
+        // Some versions of node-hid support setNonBlocking
+        if (typeof (this.device as any).setNonBlocking === 'function') {
+          (this.device as any).setNonBlocking(true);
+          console.log('[HID++] Set device to non-blocking mode');
+        }
+      } catch (err) {
+        // Ignore if not supported
+        console.log('[HID++] setNonBlocking not supported (this is OK)');
       }
-    } catch (err) {
-      // Ignore if not supported
-      console.log('[HID++] setNonBlocking not supported (this is OK)');
     }
   }
   
   // Ensure device is valid before operations
   private ensureDevice(): void {
-    if (this.closed || !this.device) {
+    if (this.closed || (!this.device && !this.bleTransport)) {
       throw new HIDPPError('Device not connected or already closed', -1);
     }
   }
@@ -98,24 +118,46 @@ export class HIDPPProtocol {
   private handleResponse(data: Buffer): void {
     console.log(`[HID++] Raw response received (${data.length} bytes): ${data.slice(0, Math.min(data.length, 16)).toString('hex')}`);
     
-    if (data.length < 7) {
-      console.log(`[HID++] Response too short, ignoring`);
+    // BLE responses don't have report ID, HID responses do
+    let offset = 0;
+    if (!this.useBLE) {
+      // HID: First byte is report ID
+      if (data.length < 7) {
+        console.log(`[HID++] Response too short, ignoring`);
+        return;
+      }
+      offset = 1; // Skip report ID
+    } else {
+      // BLE: No report ID
+      if (data.length < 6) {
+        console.log(`[HID++] Response too short, ignoring`);
+        return;
+      }
+    }
+
+    const reportId = !this.useBLE ? data[0] : 0;
+    const deviceIndex = data[offset];
+    const featureIndex = data[offset + 1];
+    const functionId = (data[offset + 2] >> 4) & 0x0f;
+    const softwareId = data[offset + 2] & 0x0f;
+
+    console.log(`[HID++] Parsed: ${this.useBLE ? '(BLE)' : `reportId=0x${reportId.toString(16).padStart(2, '0')}`} devIdx=0x${deviceIndex.toString(16).padStart(2, '0')} featIdx=0x${featureIndex.toString(16).padStart(2, '0')} funcId=0x${functionId.toString(16)} swId=0x${softwareId.toString(16)}`);
+
+    // Check if device index matches (or if response is broadcast/error)
+    if (deviceIndex !== this.deviceIndex && deviceIndex !== 0xff) {
+      console.log(`[HID++] Device index mismatch: expected 0x${this.deviceIndex.toString(16).padStart(2, '0')}, got 0x${deviceIndex.toString(16).padStart(2, '0')}`);
       return;
     }
 
-    const reportId = data[0];
-    const deviceIndex = data[1];
-    const featureIndex = data[2];
-    const functionId = (data[3] >> 4) & 0x0f;
-    const softwareId = data[3] & 0x0f;
-
-    console.log(`[HID++] Parsed: reportId=0x${reportId.toString(16).padStart(2, '0')} devIdx=0x${deviceIndex.toString(16).padStart(2, '0')} featIdx=0x${featureIndex.toString(16).padStart(2, '0')} funcId=0x${functionId.toString(16)} swId=0x${softwareId.toString(16)}`);
-
-    // Check if this is an error response
-    if (featureIndex === 0x8f) {
-      console.log(`[HID++] Error response detected`);
-      // Error response format
-      return;
+    // Check if this is an error response (feature index 0x8f or 0xff)
+    if (featureIndex === 0x8f || featureIndex === 0xff) {
+      console.log(`[HID++] Error response detected (featIdx=0x${featureIndex.toString(16).padStart(2, '0')})`);
+      // Log the error details
+      if (data.length >= offset + 6) {
+        const errorCode = data[offset + 5];
+        console.log(`[HID++] Error code: 0x${errorCode.toString(16).padStart(2, '0')}`);
+      }
+      // Still process error responses through handlers
     }
 
     const key = `${featureIndex}:${functionId}:${softwareId}`;
@@ -124,13 +166,15 @@ export class HIDPPProtocol {
     if (handler) {
       console.log(`[HID++] Handler found, calling it`);
       this.pendingResponses.delete(key);
-      handler(data);
+      // For BLE, adjust the data to match expected format (add dummy report ID)
+      const callbackData = this.useBLE ? Buffer.concat([Buffer.from([0x10]), data]) : data;
+      handler(callbackData);
     } else {
       console.log(`[HID++] No handler found for response`);
     }
   }
 
-  private async sendCommand(
+  private sendCommand(
     featureIndex: number,
     functionId: number,
     params: Buffer = Buffer.alloc(0),
@@ -139,17 +183,35 @@ export class HIDPPProtocol {
     // Validate device is available
     this.ensureDevice();
     
-    const reportId = longFormat ? REPORT_ID_LONG : REPORT_ID_SHORT;
-    const reportSize = longFormat ? 20 : 7;
+    // For BLE, we don't use report IDs
+    // For HID, we need report ID prefix
+    let report: Buffer;
     
-    const report = Buffer.alloc(reportSize);
-    report[0] = reportId;
-    report[1] = this.deviceIndex;
-    report[2] = featureIndex;
-    report[3] = (functionId << 4) | (this.softwareId & 0x0f);
-    
-    if (params.length > 0) {
-      params.copy(report, 4, 0, Math.min(params.length, reportSize - 4));
+    if (this.useBLE) {
+      // BLE: No report ID, just the HID++ payload
+      const payloadSize = longFormat ? 19 : 6;
+      report = Buffer.alloc(payloadSize);
+      report[0] = this.deviceIndex;
+      report[1] = featureIndex;
+      report[2] = (functionId << 4) | (this.softwareId & 0x0f);
+      
+      if (params.length > 0) {
+        params.copy(report, 3, 0, Math.min(params.length, payloadSize - 3));
+      }
+    } else {
+      // HID: Include report ID
+      const reportId = longFormat ? REPORT_ID_LONG : REPORT_ID_SHORT;
+      const reportSize = longFormat ? 20 : 7;
+      
+      report = Buffer.alloc(reportSize);
+      report[0] = reportId;
+      report[1] = this.deviceIndex;
+      report[2] = featureIndex;
+      report[3] = (functionId << 4) | (this.softwareId & 0x0f);
+      
+      if (params.length > 0) {
+        params.copy(report, 4, 0, Math.min(params.length, reportSize - 4));
+      }
     }
 
     console.log(`[HID++] Sending command: featureIdx=0x${featureIndex.toString(16).padStart(2, '0')} funcId=0x${functionId.toString(16)} swId=0x${this.softwareId.toString(16)} devIdx=0x${this.deviceIndex.toString(16).padStart(2, '0')}`);
@@ -177,28 +239,35 @@ export class HIDPPProtocol {
         resolve(response);
       });
 
-      try {
-        // Try different write methods for compatibility
-        // Method 1: Try write with report ID (most common for hidraw)
-        console.log(`[HID++] Writing ${report.length} bytes to device`);
-        console.log(`[HID++] Full report hex: ${report.toString('hex')}`);
-        
+      (async () => {
         try {
-          const bytesWritten = this.device.write(Array.from(report));
-          console.log(`[HID++] Write returned: ${bytesWritten} bytes`);
-        } catch (writeErr) {
-          console.error(`[HID++] Standard write failed:`, writeErr);
-          // Try without report ID as fallback
-          console.log(`[HID++] Trying write without report ID...`);
-          const bytesWritten = this.device.write(Array.from(report.slice(1)));
-          console.log(`[HID++] Write (no report ID) returned: ${bytesWritten} bytes`);
+          console.log(`[HID++] Writing ${report.length} bytes to device`);
+          console.log(`[HID++] Full report hex: ${report.toString('hex')}`);
+          
+          if (this.useBLE && this.bleTransport) {
+            // BLE transport
+            await this.bleTransport.write(report);
+            console.log(`[HID++] BLE write successful`);
+          } else if (this.device) {
+            // HID transport
+            try {
+              const bytesWritten = this.device.write(Array.from(report));
+              console.log(`[HID++] HID write returned: ${bytesWritten} bytes`);
+            } catch (writeErr) {
+              console.error(`[HID++] Standard write failed:`, writeErr);
+              // Try without report ID as fallback
+              console.log(`[HID++] Trying write without report ID...`);
+              const bytesWritten = this.device.write(Array.from(report.slice(1)));
+              console.log(`[HID++] Write (no report ID) returned: ${bytesWritten} bytes`);
+            }
+          }
+        } catch (err) {
+          console.error(`[HID++] Write failed:`, err);
+          clearTimeout(timeout);
+          this.pendingResponses.delete(key);
+          reject(err);
         }
-      } catch (err) {
-        console.error(`[HID++] All write attempts failed:`, err);
-        clearTimeout(timeout);
-        this.pendingResponses.delete(key);
-        reject(err);
-      }
+      })();
 
       // Increment software ID for next command
       this.softwareId = (this.softwareId + 1) & 0x0f;

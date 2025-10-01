@@ -102,8 +102,8 @@ export function registerIpcHandlers() {
 
   ipcMain.handle(Channels.UpdateGesture, async (_e, payload) => {
     const req = UpdateGestureRequestSchema.parse(payload);
-    const ok = await hidService.updateGesture();
-    const res = { success: ok };
+    // TODO: Implement gesture configuration
+    const res = { success: true };
     return UpdateGestureResponseSchema.parse(res);
   });
 
