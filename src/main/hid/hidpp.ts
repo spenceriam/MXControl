@@ -165,13 +165,14 @@ export class HIDPPProtocol {
     console.log(`[HID++] Looking for handler: ${key}`);
     let handler = this.pendingResponses.get(key);
     
-    // If not found and using BLE, try all pending handlers for this feature+function
+    // If not found and using BLE, match by feature index ONLY
+    // The MX Master 2S over BLE always responds with function 0x0 regardless of what we request
     if (!handler && this.useBLE) {
-      console.log(`[HID++] Trying to match by feature+function only (BLE workaround)`);
+      console.log(`[HID++] Trying to match by feature index only (BLE workaround)`);
       for (const [pendingKey, pendingHandler] of this.pendingResponses.entries()) {
-        const [pendingFeat, pendingFunc] = pendingKey.split(':').map(Number);
-        if (pendingFeat === featureIndex && pendingFunc === functionId) {
-          console.log(`[HID++] Found matching handler: ${pendingKey}`);
+        const [pendingFeat] = pendingKey.split(':').map(Number);
+        if (pendingFeat === featureIndex) {
+          console.log(`[HID++] Found matching handler by feature: ${pendingKey}`);
           handler = pendingHandler;
           key = pendingKey; // Use the pending key for deletion
           break;
