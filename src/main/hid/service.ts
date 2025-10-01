@@ -1,6 +1,7 @@
 import HID from 'node-hid';
 import { HIDPPProtocol, HIDPPError } from './hidpp';
 import { BLETransport } from './ble';
+import { BLEBatteryService } from './ble-battery';
 
 export type Connection = 'usb' | 'receiver' | 'bluetooth' | 'unknown';
 
@@ -26,6 +27,7 @@ type Listener = (s: HidState) => void;
 export class HIDService {
   private device: HID.HID | null = null;
   private bleTransport: BLETransport | null = null;
+  private bleBatteryService: BLEBatteryService | null = null;
   private hidpp: HIDPPProtocol | null = null;
   private state: HidState = { connected: false, connection: 'unknown', batteryPct: 0, charging: false };
   private pollTimer: NodeJS.Timeout | null = null;
@@ -141,7 +143,11 @@ export class HIDService {
         });
         console.log(`[HID Connect] BLE connected successfully`);
         
-        // Initialize HID++ protocol with BLE transport
+        // Initialize BLE Battery Service for simpler battery reading
+        this.bleBatteryService = new BLEBatteryService();
+        console.log(`[BLE Battery] Service initialized`);
+        
+        // Initialize HID++ protocol with BLE transport (for DPI, buttons, etc.)
         this.hidpp = new HIDPPProtocol(this.bleTransport, true);
         console.log(`[HID++] Protocol initialized with BLE transport`);
       } else {
@@ -205,6 +211,12 @@ export class HIDService {
       this.hidpp.close();
       this.hidpp = null;
     }
+    if (this.bleBatteryService) {
+      try {
+        this.bleBatteryService.close();
+      } catch {}
+      this.bleBatteryService = null;
+    }
     if (this.bleTransport) {
       try {
         this.bleTransport.close();
@@ -222,13 +234,24 @@ export class HIDService {
   }
 
   private async updateBatteryStatus(): Promise<void> {
-    if (!this.hidpp) return;
-    
     try {
-      const battery = await this.hidpp.getBatteryStatus();
-      this.state.batteryPct = battery.percentage;
-      this.state.charging = battery.charging;
-      this.emit();
+      // For Bluetooth devices, prefer GATT Battery Service (simpler, more reliable)
+      if (this.bleBatteryService && this.state.info?.serialNumber) {
+        console.log('[HID Service] Reading battery via GATT Battery Service');
+        const level = await this.bleBatteryService.readBatteryLevel(this.state.info.serialNumber);
+        this.state.batteryPct = level;
+        this.state.charging = false; // GATT Battery Service doesn't provide charging status
+        this.emit();
+        console.log(`[HID Service] Battery: ${level}%`);
+      } else if (this.hidpp) {
+        // For USB/Unifying, use HID++ protocol
+        console.log('[HID Service] Reading battery via HID++ protocol');
+        const battery = await this.hidpp.getBatteryStatus();
+        this.state.batteryPct = battery.percentage;
+        this.state.charging = battery.charging;
+        this.emit();
+        console.log(`[HID Service] Battery: ${battery.percentage}%, charging: ${battery.charging}`);
+      }
     } catch (err) {
       console.error('Failed to get battery status:', err);
     }
